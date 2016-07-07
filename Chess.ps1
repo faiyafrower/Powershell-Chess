@@ -32,7 +32,7 @@ they only appear when run in PowerShell ISE.
 
 .NOTES
     Name: Chess.ps1
-    Version: 0.1.0
+    Version: 0.1.1
     Author: Michael Shen
     Date: 07-06-2016
 
@@ -338,8 +338,8 @@ Function Move-Piece {
 				if ($board[$DesiredRow, $DesiredColumn] -ne $Empty) {
 					$Attack = $true
 				}
-            } elseif (($pc.firstmove = $true) -and `
-                      ($pc.color = 'White')) {
+            } elseif (($pc.firstmove -eq $true) -and `
+                      ($pc.color -eq 'White')) {
                 if (($dst -eq 'G1') -and `
                     ($WhtRk2.firstmove -eq $true)) {
                     
@@ -365,8 +365,8 @@ Function Move-Piece {
                     $MoveSuccess = $true
                     $pc.firstmove = $false
                 }
-            } elseif (($pc.firstmove = $true) -and `
-                      ($pc.color = 'Black')) {
+            } elseif (($pc.firstmove -eq $true) -and `
+                      ($pc.color -eq 'Black')) {
                 if (($dst -eq 'G8') -and `
                     ($BlkRk2.firstmove -eq $true)) {
                     
