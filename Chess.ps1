@@ -109,7 +109,7 @@ Function Draw-Board {
 				[ValidateScript({$_.Color -eq 'White'})]$pc = $board[$cr, $cc]
 				[ValidateScript({$_.Length -eq 2})]$dst = Read-Host 'White ending square'
 			} Catch {
-				Write-Error "Illegal move"
+				Write-Error "Illegal white move"
 				Draw-Board
 				Break
 			}
@@ -121,7 +121,7 @@ Function Draw-Board {
 				[ValidateScript({$_.Color -eq 'Black'})]$pc = $board[$cr, $cc]
 				[ValidateScript({$_.Length -eq 2})]$dst = Read-Host 'Black ending square'
 			} Catch {
-				Write-Error "Illegal move"
+				Write-Error "Illegal black move"
 				Draw-Board
 				Break
 			}
@@ -170,12 +170,11 @@ Function Move-Piece {
 	#Moving into another one of your pieces
     if ($board[$DesiredRow, $DesiredColumn] -ne $Empty) {
         if ($pc.Color -eq $board[$DesiredRow, $DesiredColumn].Color) {
-			Write-Error "Illegal Move"
+			Write-Error "Collision with own team"
 			Draw-Board
-		}
+        }
     }
 
-	#castling logic
 	[int]$MoveX = $DesiredColumn - $CurrentColumn
 	[int]$MoveY = $DesiredRow - $CurrentRow
     
@@ -188,11 +187,11 @@ Function Move-Piece {
 			}
 			$MoveX = [math]::abs($MoveX)
 			if ($MoveX -gt 1 -or $MoveY -gt 2 -or $MoveY -le 0) {
-				Write-Error "Illegal Move"
+				Write-Error "Illegal Pawn Move"
 			} else {
 				if (($MoveX -eq 0) -and ($MoveY -eq 1)) {
 					if ($board[$DesiredRow,$DesiredColumn] -ne $Empty) {
-						Write-Error "Illegal Move"
+						Write-Error "Illegal Pawn Move"
 					} else {
 						$MoveSuccess = $true
 						$pc.firstmove = $false
@@ -206,31 +205,31 @@ Function Move-Piece {
 						$pc.firstmove = $false
                         $pc.inpassing = $true
 					} else {
-						Write-Error "Illegal Move"
+						Write-Error "Illegal Pawn Move"
 					}
 				} elseif (($MoveX -eq 1) -and ($MoveY -eq 1)) {
 					if ($board[$DesiredRow,$DesiredColumn] -eq $Empty) {
 						#en passant logic
-						Write-Error "Illegal Move"
+						Write-Error "Illegal Pawn Move"
 					} else {
 						$Attack = $true
 						$MoveSuccess = $true
 						$pc.firstmove = $false
 					}
 				} else {
-					Write-Error "Illegal Move"
+					Write-Error "Illegal Pawn Move"
 				}
 			}
 		}
 
         'Rook' {
             if (([math]::abs($MoveX) -gt 0) -and ([math]::abs($MoveY) -gt 0)) {
-				Write-Error "Illegal Move"
+				Write-Error "Illegal Rook Move"
 			} else {
 				if ($MoveX -gt 0) {
 					for ($i = 1; $i -lt $MoveX; $i++) {
 						if ($board[$CurrentRow, ($CurrentColumn + $i)] -ne $Empty) {
-								Write-Error "Illegal Move"
+								Write-Error "Illegal Rook Move"
 								Draw-Board
 								break
 						}
@@ -238,7 +237,7 @@ Function Move-Piece {
 				} elseif ($MoveX -lt 0) {
 					for ($i = 1; $i -lt [math]::abs($MoveX); $i++) {
 						if ($board[$CurrentRow, ($CurrentColumn - $i)] -ne $Empty) {
-								Write-Error "Illegal Move"
+								Write-Error "Illegal Rook Move"
 								Draw-Board
 								break
 						}
@@ -246,7 +245,7 @@ Function Move-Piece {
 				} elseif ($MoveY -gt 0) {
 					for ($i = 1; $i -lt $MoveY; $i++) {
 						if ($board[($CurrentRow + $i), $CurrentColumn] -ne $Empty) {
-								Write-Error "Illegal Move"
+								Write-Error "Illegal Rook Move"
 								Draw-Board
 								break
 						}
@@ -254,7 +253,7 @@ Function Move-Piece {
 				} else {
 					for ($i = 1; $i -lt [math]::abs($MoveY); $i++) {
 						if ($board[($CurrentRow - $i), $CurrentColumn] -ne $Empty) {
-								Write-Error "Illegal Move"
+								Write-Error "Illegal Rook Move"
 								Draw-Board
 								break
 						}
@@ -278,19 +277,19 @@ Function Move-Piece {
 					$Attack = $true
 				}
             } else {
-                Write-Error "Illegal Move"
+                Write-Error "Illegal Knight Move"
             }
         }
 
         'Bishop' {
 			if ([math]::abs($MoveX) -ne [math]::abs($MoveY)) {
-				Write-Error "Illegal Move"
+				Write-Error "Illegal Bishop Move"
 			} else {
 				if ($MoveX -gt 0) {
 					if ($MoveY -gt 0) {
 						for ($i = 1; $i -lt $MoveX; $i++) {
 							if ($board[($CurrentRow + $i) , ($CurrentColumn + $i)] -ne $Empty) {
-								Write-Error "Illegal Move"
+								Write-Error "Illegal Bishop Move"
 								Draw-Board
 								break
 							}
@@ -298,7 +297,7 @@ Function Move-Piece {
 					} else {
 						for ($i = 1; $i -lt $MoveX; $i++) {
 							if ($board[($CurrentRow - $i) , ($CurrentColumn + $i)] -ne $Empty) {
-								Write-Error "Illegal Move"
+								Write-Error "Illegal Bishop Move"
 								Draw-Board
 								break
 							}
@@ -308,7 +307,7 @@ Function Move-Piece {
 					if ($MoveY -gt 0) {
 						for ($i = 1; $i -lt $MoveY; $i++) {
 							if ($board[($CurrentRow + $i) , ($CurrentColumn - $i)] -ne $Empty) {
-								Write-Error "Illegal Move"
+								Write-Error "Illegal Bishop Move"
 								Draw-Board
 								break
 							}
@@ -316,7 +315,7 @@ Function Move-Piece {
 					} else {
 						for ($i = 1; $i -lt [math]::abs($MoveX); $i++) {
 							if ($board[($CurrentRow - $i) , ($CurrentColumn - $i)] -ne $Empty) {
-								Write-Error "Illegal Move"
+								Write-Error "Illegal Bishop Move"
 								Draw-Board
 								break
 							}
@@ -334,14 +333,67 @@ Function Move-Piece {
 			$MoveX = [math]::abs($MoveX)
 			$MoveY = [math]::abs($MoveY)
 
-			#castling logic
             if (($MoveX -eq 1) -or ($MoveY -eq 1)) {
                 $MoveSuccess = $true
 				if ($board[$DesiredRow, $DesiredColumn] -ne $Empty) {
 					$Attack = $true
 				}
-            } Else {
-                Write-Error "Illegal Move"
+            } elseif (($pc.firstmove = $true) -and `
+                      ($pc.color = 'White')) {
+                if (($dst -eq 'G1') -and `
+                    ($WhtRk2.firstmove -eq $true)) {
+                    
+                    $Crk = $board[0, 7]
+                    $board[0, 7] = $Empty
+                    $Crk.CurrentPosition = 'F1'
+                    $Crk.CurrentRow = 0
+                    $Crk.CurrentColumn = 5
+                    $Crk.firstmove = $false
+
+                    $MoveSuccess = $true
+                    $pc.firstmove = $false
+                } elseif (($dst -eq 'C1') -and `
+                          ($WhtRk1.firstmove -eq $true)) {
+                    
+                    $Crk = $board[0, 0]
+                    $board[0, 0] = $Empty
+                    $Crk.CurrentPosition = 'D1'
+                    $Crk.CurrentRow = 0
+                    $Crk.CurrentColumn = 3
+                    $Crk.firstmove = $false
+
+                    $MoveSuccess = $true
+                    $pc.firstmove = $false
+                }
+            } elseif (($pc.firstmove = $true) -and `
+                      ($pc.color = 'Black')) {
+                if (($dst -eq 'G8') -and `
+                    ($BlkRk2.firstmove -eq $true)) {
+                    
+                    $Crk = $board[7, 7]
+                    $board[7, 7] = $Empty
+                    $Crk.CurrentPosition = 'F8'
+                    $Crk.CurrentRow = 7
+                    $Crk.CurrentColumn = 5
+                    $Crk.firstmove = $false
+
+                    $MoveSuccess = $true
+                    $pc.firstmove = $false
+                } elseif (($dst -eq 'C8') -and `
+                          ($BlkRk1.firstmove -eq $true)) {
+                    
+                    $Crk = $board[7, 0]
+                    $board[7, 0] = $Empty
+                    $Crk.CurrentPosition = 'F1'
+                    $Crk.CurrentRow = 7
+                    $Crk.CurrentColumn = 3
+                    $Crk.firstmove = $false
+
+                    $MoveSuccess = $true
+                    $pc.firstmove = $false
+                }
+            } else {
+                Write-Error "Illegal King Move"
             }
         }
 
@@ -351,7 +403,7 @@ Function Move-Piece {
 					if ($MoveY -gt 0) {
 						for ($i = 1; $i -lt $MoveX; $i++) {
 							if ($board[($CurrentRow + $i) , ($CurrentColumn + $i)] -ne $Empty) {
-								Write-Error "Illegal Move"
+								Write-Error "Illegal Queen Move"
 								Draw-Board
 								break
 							}
@@ -359,7 +411,7 @@ Function Move-Piece {
 					} else {
 						for ($i = 1; $i -lt $MoveX; $i++) {
 							if ($board[($CurrentRow - $i) , ($CurrentColumn + $i)] -ne $Empty) {
-								Write-Error "Illegal Move"
+								Write-Error "Illegal Queen Move"
 								Draw-Board
 								break
 							}
@@ -369,7 +421,7 @@ Function Move-Piece {
 					if ($MoveY -gt 0) {
 						for ($i = 1; $i -lt $MoveY; $i++) {
 							if ($board[($CurrentRow + $i) , ($CurrentColumn - $i)] -ne $Empty) {
-								Write-Error "Illegal Move"
+								Write-Error "Illegal Queen Move"
 								Draw-Board
 								break
 							}
@@ -377,7 +429,7 @@ Function Move-Piece {
 					} else {
 						for ($i = 1; $i -lt [math]::abs($MoveX); $i++) {
 							if ($board[($CurrentRow - $i) , ($CurrentColumn - $i)] -ne $Empty) {
-								Write-Error "Illegal Move"
+								Write-Error "Illegal Queen Move"
 								Draw-Board
 								break
 							}
@@ -393,7 +445,7 @@ Function Move-Piece {
 				if ($MoveX -gt 0) {
 					for ($i = 1; $i -lt $MoveX; $i++) {
 						if ($board[$CurrentRow, ($CurrentColumn + $i)] -ne $Empty) {
-								Write-Error "Illegal Move"
+								Write-Error "Illegal Queen Move"
 								Draw-Board
 								break
 						}
@@ -401,7 +453,7 @@ Function Move-Piece {
 				} elseif ($MoveX -lt 0) {
 					for ($i = 1; $i -lt [math]::abs($MoveX); $i++) {
 						if ($board[$CurrentRow, ($CurrentColumn - $i)] -ne $Empty) {
-								Write-Error "Illegal Move"
+								Write-Error "Illegal Queen Move"
 								Draw-Board
 								break
 						}
@@ -409,7 +461,7 @@ Function Move-Piece {
 				} elseif ($MoveY -gt 0) {
 					for ($i = 1; $i -lt $MoveY; $i++) {
 						if ($board[($CurrentRow + $i), $CurrentColumn] -ne $Empty) {
-								Write-Error "Illegal Move"
+								Write-Error "Illegal Queen Move"
 								Draw-Board
 								break
 						}
@@ -417,7 +469,7 @@ Function Move-Piece {
 				} else {
 					for ($i = 1; $i -lt [math]::abs($MoveY); $i++) {
 						if ($board[($CurrentRow - $i), $CurrentColumn] -ne $Empty) {
-								Write-Error "Illegal Move"
+								Write-Error "Illegal Queen Move"
 								Draw-Board
 								break
 						}
@@ -428,7 +480,7 @@ Function Move-Piece {
 					$Attack = $true
 				}
 			} else {
-				Write-Error "Illegal Move"
+				Write-Error "Illegal Queen Move"
 			}
 		}
 	}
