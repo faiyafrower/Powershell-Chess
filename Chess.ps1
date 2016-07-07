@@ -59,18 +59,20 @@ Function Draw-Board {
     [Array] $CurrentBlack = $BlackPieces | Where {$_.Alive -eq $true}
     
 	#Place all the white pieces
-    ForEach ($pc in $CurrentWhite) {
+    foreach ($pc in $CurrentWhite) {
         $board[($pc.CurrentRow),($pc.CurrentColumn)] = $pc
     }
     #Place all the black pieces
-    ForEach ($pc in $CurrentBlack) {
+    foreach ($pc in $CurrentBlack) {
         $board[($pc.CurrentRow),($pc.CurrentColumn)] = $pc
     }
 
 	#Check for spaces without a piece in them, then fill it with the empty placeholder.
-    for($r=0; $r -le 7; $r++) {
-        for($c=0; $c -le 7; $c++) {
-            If ($board[$r,$c] -eq $null) {$board[$r,$c] = $Empty}
+    for ($i = 0; $i -le 7; $i++) {
+        for ($j = 0; $j -le 7; $j++) {
+            if ($board[$i, $j] -eq $null) {
+				$board[$i, $j] = $Empty
+			}
         }
     }
 
@@ -95,9 +97,9 @@ Function Draw-Board {
     Write-Host '   -------------------------------------- '
     Write-Host '     A    B    C   D    E    F   G    H'
 
-    if ($WhtKng.Alive -eq $false) {
+    if ($wK.Alive -eq $false) {
 		echo "Black Wins!"
-	} elseif ($BlkKng.Alive -eq $false) {
+	} elseif ($bK.Alive -eq $false) {
 		echo "White Wins!"
 	} else {
 		#Ask the player what they would like to move
@@ -113,7 +115,7 @@ Function Draw-Board {
 				Draw-Board
 				Break
 			}
-		} Else {
+		} else {
 			Try {
 				[ValidateScript({$_.Length -eq 2})]$src = Read-Host 'Black starting square'
 				[Int]$cc = Get-Column $src[0]
@@ -142,8 +144,8 @@ Function Move-Piece {
 		#Validate input
         [Int]$CurrentColumn = Get-Column $src[0]
         [Int]$CurrentRow = Get-Row $src[1]
-        [ValidateRange(0,7)][Int]$DesiredColumn = Get-Column $dst[0]
-        [ValidateRange(0,7)][Int]$DesiredRow = Get-Row $dst[1]
+        [Int]$DesiredColumn = Get-Column $dst[0]
+        [Int]$DesiredRow = Get-Row $dst[1]
 
         #Get the piece that is in the source space
         $pc = $board[$CurrentRow, $CurrentColumn]
@@ -181,17 +183,17 @@ Function Move-Piece {
 	#Pieces playable
     switch ($pc.GetType().Name) {
 		'Pawn' {
-			if ($pc.color -eq 'Black') {
-				$MoveX *= -1
-				$MoveY *= -1
-			}
 			$MoveX = [math]::abs($MoveX)
-			if ($MoveX -gt 1 -or $MoveY -gt 2 -or $MoveY -le 0) {
+			if (($MoveX -gt 1) -or ([math]::abs($MoveY) -gt 2)) {
 				Write-Error "Illegal Pawn Move"
 			} else {
+				#Force pawns to only move "forward"
+				if ($pc.Color -eq 'Black') {
+					$MoveY *= -1
+				}
 				if (($MoveX -eq 0) -and ($MoveY -eq 1)) {
 					if ($board[$DesiredRow,$DesiredColumn] -ne $Empty) {
-						Write-Error "Illegal Pawn Move"
+						Write-Error "Illegal Pawn Move 1"
 					} else {
 						$MoveSuccess = $true
 						$pc.firstmove = $false
@@ -203,14 +205,26 @@ Function Move-Piece {
 
 						$MoveSuccess = $true
 						$pc.firstmove = $false
-                        $pc.inpassing = $true
+                        $pc.inpassing = $turncounter
 					} else {
-						Write-Error "Illegal Pawn Move"
+						Write-Error "Illegal Pawn Move 2"
 					}
 				} elseif (($MoveX -eq 1) -and ($MoveY -eq 1)) {
 					if ($board[$DesiredRow,$DesiredColumn] -eq $Empty) {
-						#en passant logic
-						Write-Error "Illegal Pawn Move"
+						$enpassant = $board[$CurrentRow, $DesiredColumn]
+						if (($enpassant.Type -eq 'Pawn') -and `
+							($pc.Color -ne $enpassant.Color) -and `
+							($enpassant.inpassing -eq ($turncounter - 1))) {
+							
+							$MoveSuccess = $true
+							$board[$CurrentRow, $DesiredColumn] = $Empty
+							$enpassant.Alive = $false
+							$enpassant.CurrentPosition = $null
+							$enpassant.CurrentRow = $null
+							$enpassant.CurrentColumn = $null
+						} else {
+							Write-Error 'Cannot capture en passant'
+						}
 					} else {
 						$Attack = $true
 						$MoveSuccess = $true
@@ -341,7 +355,7 @@ Function Move-Piece {
             } elseif (($pc.firstmove -eq $true) -and `
                       ($pc.color -eq 'White')) {
                 if (($dst -eq 'G1') -and `
-                    ($WhtRk2.firstmove -eq $true)) {
+                    ($wHR.firstmove -eq $true)) {
                     
                     $Crk = $board[0, 7]
                     $board[0, 7] = $Empty
@@ -353,7 +367,7 @@ Function Move-Piece {
                     $MoveSuccess = $true
                     $pc.firstmove = $false
                 } elseif (($dst -eq 'C1') -and `
-                          ($WhtRk1.firstmove -eq $true)) {
+                          ($wAR.firstmove -eq $true)) {
                     
                     $Crk = $board[0, 0]
                     $board[0, 0] = $Empty
@@ -368,7 +382,7 @@ Function Move-Piece {
             } elseif (($pc.firstmove -eq $true) -and `
                       ($pc.color -eq 'Black')) {
                 if (($dst -eq 'G8') -and `
-                    ($BlkRk2.firstmove -eq $true)) {
+                    ($bHR.firstmove -eq $true)) {
                     
                     $Crk = $board[7, 7]
                     $board[7, 7] = $Empty
@@ -380,7 +394,7 @@ Function Move-Piece {
                     $MoveSuccess = $true
                     $pc.firstmove = $false
                 } elseif (($dst -eq 'C8') -and `
-                          ($BlkRk1.firstmove -eq $true)) {
+                          ($bAR.firstmove -eq $true)) {
                     
                     $Crk = $board[7, 0]
                     $board[7, 0] = $Empty
@@ -486,25 +500,41 @@ Function Move-Piece {
 	}
 
     if ($MoveSuccess) {
+		if ($Player1Turn) {
+			$logstring = [string](($turncounter / 2) + 1) + $pc.Icon
+		} else {
+			$logstring += $pc.Icon
+		}
+
 		if ($Attack) {
             $board[$DesiredRow,$DesiredColumn].Alive = $false
 			$board[$DesiredRow,$DesiredColumn].CurrentPosition = $null
 			$board[$DesiredRow,$DesiredColumn].CurrentRow = $null
 			$board[$DesiredRow,$DesiredColumn].CurrentColumn = $null
+
+			$logstring += 'x'
         }
         
-        $board[$CurrentRow,$CurrentColumn] = $Empty
+        $board[$CurrentRow, $CurrentColumn] = $Empty
         $pc.CurrentPosition = $dst.ToUpper()
         $pc.CurrentRow = $DesiredRow
         $pc.CurrentColumn = $DesiredColumn 
         
+		$logstring += $dst
+		$logstring += "`t"
+		if (!($Player1Turn)) {
+			Add-Content -Encoding Unicode $logpath $logstring 
+		}
+
+		$turncounter += 1
         $Player1Turn = (!($Player1Turn))           
     }
+
     Draw-Board
 }
 
 Function Get-Column {
-    Param ([String]$Col)
+    Param ([ValidatePattern('[A-H]')][string]$Col)
     switch ($Col) {
         "A" {Return "0"}
         "B" {Return "1"}
@@ -518,7 +548,7 @@ Function Get-Column {
 }
 
 Function Get-Row {
-	Param ([string]$row)
+	Param ([ValidateRange(1,8)][string]$row)
 
 	return ($row - 1)
 }
@@ -534,21 +564,23 @@ Function Get-Row {
 
 #Gives all classes that inherit(:) this class the base properties
 Class ChessPiece {
-    [Boolean]$Alive=$true;
-    [String]$Icon;
-    [String]$Color;
-    [String]$StartingPosition;
-    [Int]$StartingRow;
-    [Int]$StartingColumn;
-    [String]$CurrentPosition;
-    [ValidateRange(0,7)][Int]$CurrentRow;
-    [ValidateRange(0,7)][Int]$CurrentColumn;
+    [Boolean]$Alive=$true
+	[String]$Type
+    [String]$Icon
+    [String]$Color
+    [String]$StartingPosition
+    [Int]$StartingRow
+    [Int]$StartingColumn
+    [String]$CurrentPosition
+    [ValidateRange(0,7)][Int]$CurrentRow
+    [ValidateRange(0,7)][Int]$CurrentColumn
 }
 
 Class Pawn : ChessPiece {
     [bool]$firstmove = $true
-	[bool]$inpassing = $false
+	[int]$inpassing = 0
     Pawn([String]$Position) {
+		$this.Type = 'Pawn'
         $this.StartingPosition = $Position
         $this.StartingRow = Get-Row $Position[1] 
         $this.StartingColumn = Get-Column $Position[0]
@@ -569,6 +601,7 @@ Class Pawn : ChessPiece {
 Class Rook : ChessPiece {
 	[bool]$firstmove = $true
     Rook([String]$Position) {
+		$this.Type = 'Rook'
         $this.StartingPosition = $Position
         $this.StartingRow = Get-Row $Position[1] 
         $this.StartingColumn = Get-Column $Position[0]
@@ -588,6 +621,7 @@ Class Rook : ChessPiece {
 
 Class Knight : ChessPiece {
     Knight([String]$Position) {
+		$this.Type = 'Knight'
         $this.StartingPosition = $Position
         $this.StartingRow = Get-Row $Position[1] 
         $this.StartingColumn = Get-Column $Position[0]
@@ -607,6 +641,7 @@ Class Knight : ChessPiece {
 
 Class Bishop : ChessPiece {
     Bishop([String]$Position) {
+		$this.Type = 'Bishop'
         $this.StartingPosition = $Position
         $this.StartingRow = Get-Row $Position[1] 
         $this.StartingColumn = Get-Column $Position[0]
@@ -626,6 +661,7 @@ Class Bishop : ChessPiece {
 
 Class Queen : ChessPiece {
     Queen([String]$Position) {
+		$this.Type = 'Queen'
         $this.StartingPosition = $Position
         $this.StartingRow = Get-Row $Position[1] 
         $this.StartingColumn = Get-Column $Position[0]
@@ -646,6 +682,7 @@ Class Queen : ChessPiece {
 Class King : ChessPiece {
 	[bool]$firstmove = $true
 	King([String]$Position) {
+		$this.Type = 'King'
         $this.StartingPosition = $Position
         $this.StartingRow = Get-Row $Position[1] 
         $this.StartingColumn = Get-Column $Position[0]
@@ -676,31 +713,35 @@ Class Blank {
 
 #Creates a turn status
 [bool]$Script:Player1Turn = $true
+[string]$Script:logpath = 'C:\Users\z003ndjt\Desktop\Powershell\Powershell-Chess-master\log.txt'
 
-$WhtPwn1 = [Pawn]::New('A2');$WhtPwn2 = [Pawn]::New('B2');$WhtPwn3 = [Pawn]::New('C2');$WhtPwn4 = [Pawn]::New('D2');
-$WhtPwn5 = [Pawn]::New('E2');$WhtPwn6 = [Pawn]::New('F2');$WhtPwn7 = [Pawn]::New('G2');$WhtPwn8 = [Pawn]::New('H2');
-$WhtRk1 = [Rook]::New('A1');$WhtRk2 = [Rook]::New('H1');$whtKnght1 = [Knight]::New('B1');$whtKnght2 = [Knight]::New('G1');
-$WhtBshp1 = [Bishop]::New('C1');$WhtBshp2 = [Bishop]::New('F1');$WhtQn = [Queen]::New('D1');$WhtKng = [King]::New('E1')
+$wAP = [Pawn]::New('A2');$wBP = [Pawn]::New('B2');$wCP = [Pawn]::New('C2');$wDP = [Pawn]::New('D2');
+$wEP = [Pawn]::New('E2');$wFP = [Pawn]::New('F2');$wGP = [Pawn]::New('G2');$wHP = [Pawn]::New('H2');
+$wAR = [Rook]::New('A1');$wHR = [Rook]::New('H1');$wBN = [Knight]::New('B1');$wGN = [Knight]::New('G1');
+$wCB = [Bishop]::New('C1');$wFB = [Bishop]::New('F1');$wQ = [Queen]::New('D1');$wK = [King]::New('E1')
 
-$BlkPwn1 = [Pawn]::New('A7');$BlkPwn2 = [Pawn]::New('B7');$BlkPwn3 = [Pawn]::New('C7');$BlkPwn4 = [Pawn]::New('D7');
-$BlkPwn5 = [Pawn]::New('E7');$BlkPwn6 = [Pawn]::New('F7');$BlkPwn7 = [Pawn]::New('G7');$BlkPwn8 = [Pawn]::New('H7');
-$BlkRk1 = [Rook]::New('A8');$BlkRk2 = [Rook]::New('H8');$BlkKnght1 = [Knight]::New('B8');$BlkKnght2 = [Knight]::New('G8');
-$BlkBshp1 = [Bishop]::New('C8');$BlkBshp2 = [Bishop]::New('F8');$BlkQn = [Queen]::New('D8');$BlkKng = [King]::New('E8')
+$bAP = [Pawn]::New('A7');$bBP = [Pawn]::New('B7');$bCP = [Pawn]::New('C7');$bDP = [Pawn]::New('D7');
+$bEP = [Pawn]::New('E7');$bFP = [Pawn]::New('F7');$bGP = [Pawn]::New('G7');$bHP = [Pawn]::New('H7');
+$bAR = [Rook]::New('A8');$bHR = [Rook]::New('H8');$bBN = [Knight]::New('B8');$bGN = [Knight]::New('G8');
+$bCR = [Bishop]::New('C8');$bFR = [Bishop]::New('F8');$bQ = [Queen]::New('D8');$bK = [King]::New('E8')
 
 $Empty = [Blank]::New()
 
 [Array] $Script:WhitePieces = @(
-    $WhtPwn1,$WhtPwn2,$WhtPwn3,$WhtPwn4,
-    $WhtPwn5,$WhtPwn6,$WhtPwn7,$WhtPwn8,
-    $WhtRk1,$WhtRk2,$whtKnght1,$whtKnght2,
-    $WhtBshp1,$WhtBshp2,$WhtQn,$WhtKng
+    $wAP,$wBP,$wCP,$wDP,
+    $wEP,$wFP,$wGP,$wHP,
+    $wAR,$wHR,$wBN,$wGN,
+    $wCB,$wFB,$wQ,$wK
 )
 
 [Array] $Script:BlackPieces = @(
-    $BlkPwn1,$BlkPwn2,$BlkPwn3,$BlkPwn4,
-    $BlkPwn5,$BlkPwn6,$BlkPwn7,$BlkPwn8,
-    $BlkRk1,$BlkRk2,$BlkKnght1,$BlkKnght2,
-    $BlkBshp1,$BlkBshp2,$BlkQn,$BlkKng
+    $bAP,$bBP,$bCP,$bDP,
+    $bEP,$bFP,$bGP,$bHP,
+    $bAR,$bHR,$bBN,$bGN,
+    $bCR,$bFR,$bQ,$bK
 )
 
+Clear-Content $logpath
+Add-Content -Encoding Unicode $logpath " White   Black`r`n -------------"
+[int]$Script:turncounter = 0
 Draw-Board
