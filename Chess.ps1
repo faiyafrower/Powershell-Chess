@@ -3,7 +3,7 @@
 #####################################################################################
 #                                                      _:_
 #     =========================                       '-.-'
-#    | PowerShell Chess v0.1.3 |             ()      __.'.__
+#    | PowerShell Chess v0.1.4 |             ()      __.'.__
 #     =========================           .-:--:-.  |_______|
 #                                  ()      \____/    \=====/
 #                                  /\      {====}     )___(
@@ -32,18 +32,18 @@ they only appear when run in PowerShell ISE.
 
 .NOTES
     Name: Chess.ps1
-    Version: 0.1.3
+    Version: 0.1.4
     Author: Michael Shen
-    Date: 07-07-2016
+    Date: 07-08-2016
 
 .CHANGELOG
     0.1.0 - Chojiku      - 03-12-2016 - Initial Script
     0.1.1 - Michael Shen - 07-06-2016 - Overhaul into playable state
 	0.1.2 - Michael Shen - 07-07-2016 - Castling
 	0.1.3 - Michael Shen - 07-07-2016 - en passant
+	0.1.4 - Michael Shen - 07-08-2016 - Pawn promotion
 
 .TODO
-	- pawn promotion logic
     - Normal chess notation for moves
 	- check and checkmate logic
     - Outsource AI to some engine?
@@ -181,8 +181,8 @@ Function Move-Piece {
 	[int]$MoveY = $DesiredRow - $CurrentRow
     
 	#Pieces playable
-    switch ($pc.GetType().Name) {
-		'Pawn' {
+    switch ($pc.Type) {
+        'Pawn' {
 			$MoveX = [math]::abs($MoveX)
 			if (($MoveX -gt 1) -or ([math]::abs($MoveY) -gt 2)) {
 				Write-Error "Illegal Pawn Move"
@@ -235,51 +235,6 @@ Function Move-Piece {
 				}
 			}
 		}
-
-        'Rook' {
-            if (([math]::abs($MoveX) -gt 0) -and ([math]::abs($MoveY) -gt 0)) {
-				Write-Error "Illegal Rook Move"
-			} else {
-				if ($MoveX -gt 0) {
-					for ($i = 1; $i -lt $MoveX; $i++) {
-						if ($board[$CurrentRow, ($CurrentColumn + $i)] -ne $Empty) {
-								Write-Error "Illegal Rook Move"
-								Draw-Board
-								break
-						}
-					}
-				} elseif ($MoveX -lt 0) {
-					for ($i = 1; $i -lt [math]::abs($MoveX); $i++) {
-						if ($board[$CurrentRow, ($CurrentColumn - $i)] -ne $Empty) {
-								Write-Error "Illegal Rook Move"
-								Draw-Board
-								break
-						}
-					}
-				} elseif ($MoveY -gt 0) {
-					for ($i = 1; $i -lt $MoveY; $i++) {
-						if ($board[($CurrentRow + $i), $CurrentColumn] -ne $Empty) {
-								Write-Error "Illegal Rook Move"
-								Draw-Board
-								break
-						}
-					}
-				} else {
-					for ($i = 1; $i -lt [math]::abs($MoveY); $i++) {
-						if ($board[($CurrentRow - $i), $CurrentColumn] -ne $Empty) {
-								Write-Error "Illegal Rook Move"
-								Draw-Board
-								break
-						}
-					}
-				}
-				$MoveSuccess = $true
-				$pc.firstmove = $false
-				if ($board[$DesiredRow, $DesiredColumn] -ne $Empty) {
-					$Attack = $true
-				}
-			}
-        }
 
         'Knight' {
 			$MoveX = [math]::abs($MoveX)
@@ -343,75 +298,52 @@ Function Move-Piece {
 			}
         }
 
-        'King' {
-			$MoveX = [math]::abs($MoveX)
-			$MoveY = [math]::abs($MoveY)
-
-            if (($MoveX -eq 1) -or ($MoveY -eq 1)) {
-                $MoveSuccess = $true
+		'Rook' {
+            if (([math]::abs($MoveX) -gt 0) -and ([math]::abs($MoveY) -gt 0)) {
+				Write-Error "Illegal Rook Move"
+			} else {
+				if ($MoveX -gt 0) {
+					for ($i = 1; $i -lt $MoveX; $i++) {
+						if ($board[$CurrentRow, ($CurrentColumn + $i)] -ne $Empty) {
+								Write-Error "Illegal Rook Move"
+								Draw-Board
+								break
+						}
+					}
+				} elseif ($MoveX -lt 0) {
+					for ($i = 1; $i -lt [math]::abs($MoveX); $i++) {
+						if ($board[$CurrentRow, ($CurrentColumn - $i)] -ne $Empty) {
+								Write-Error "Illegal Rook Move"
+								Draw-Board
+								break
+						}
+					}
+				} elseif ($MoveY -gt 0) {
+					for ($i = 1; $i -lt $MoveY; $i++) {
+						if ($board[($CurrentRow + $i), $CurrentColumn] -ne $Empty) {
+								Write-Error "Illegal Rook Move"
+								Draw-Board
+								break
+						}
+					}
+				} else {
+					for ($i = 1; $i -lt [math]::abs($MoveY); $i++) {
+						if ($board[($CurrentRow - $i), $CurrentColumn] -ne $Empty) {
+								Write-Error "Illegal Rook Move"
+								Draw-Board
+								break
+						}
+					}
+				}
+				$MoveSuccess = $true
+				$pc.firstmove = $false
 				if ($board[$DesiredRow, $DesiredColumn] -ne $Empty) {
 					$Attack = $true
 				}
-            } elseif (($pc.firstmove -eq $true) -and `
-                      ($pc.color -eq 'White')) {
-                if (($dst -eq 'G1') -and `
-                    ($wHR.firstmove -eq $true)) {
-                    
-                    $Crk = $board[0, 7]
-                    $board[0, 7] = $Empty
-                    $Crk.CurrentPosition = 'F1'
-                    $Crk.CurrentRow = 0
-                    $Crk.CurrentColumn = 5
-                    $Crk.firstmove = $false
-
-                    $MoveSuccess = $true
-                    $pc.firstmove = $false
-                } elseif (($dst -eq 'C1') -and `
-                          ($wAR.firstmove -eq $true)) {
-                    
-                    $Crk = $board[0, 0]
-                    $board[0, 0] = $Empty
-                    $Crk.CurrentPosition = 'D1'
-                    $Crk.CurrentRow = 0
-                    $Crk.CurrentColumn = 3
-                    $Crk.firstmove = $false
-
-                    $MoveSuccess = $true
-                    $pc.firstmove = $false
-                }
-            } elseif (($pc.firstmove -eq $true) -and `
-                      ($pc.color -eq 'Black')) {
-                if (($dst -eq 'G8') -and `
-                    ($bHR.firstmove -eq $true)) {
-                    
-                    $Crk = $board[7, 7]
-                    $board[7, 7] = $Empty
-                    $Crk.CurrentPosition = 'F8'
-                    $Crk.CurrentRow = 7
-                    $Crk.CurrentColumn = 5
-                    $Crk.firstmove = $false
-
-                    $MoveSuccess = $true
-                    $pc.firstmove = $false
-                } elseif (($dst -eq 'C8') -and `
-                          ($bAR.firstmove -eq $true)) {
-                    
-                    $Crk = $board[7, 0]
-                    $board[7, 0] = $Empty
-                    $Crk.CurrentPosition = 'F1'
-                    $Crk.CurrentRow = 7
-                    $Crk.CurrentColumn = 3
-                    $Crk.firstmove = $false
-
-                    $MoveSuccess = $true
-                    $pc.firstmove = $false
-                }
-            } else {
-                Write-Error "Illegal King Move"
-            }
+			}
         }
 
-        'Queen' {
+		'Queen' {
 			if ([math]::abs($MoveX) -eq [math]::abs($MoveY)) {
 				if ($MoveX -gt 0) {
 					if ($MoveY -gt 0) {
@@ -497,6 +429,74 @@ Function Move-Piece {
 				Write-Error "Illegal Queen Move"
 			}
 		}
+
+        'King' {
+			$MoveX = [math]::abs($MoveX)
+			$MoveY = [math]::abs($MoveY)
+
+            if (($MoveX -eq 1) -or ($MoveY -eq 1)) {
+                $MoveSuccess = $true
+				if ($board[$DesiredRow, $DesiredColumn] -ne $Empty) {
+					$Attack = $true
+				}
+            } elseif (($pc.firstmove -eq $true) -and `
+                      ($pc.color -eq 'White')) {
+                if (($dst -eq 'G1') -and `
+                    ($wHR.firstmove -eq $true)) {
+                    
+                    $Crk = $board[0, 7]
+                    $board[0, 7] = $Empty
+                    $Crk.CurrentPosition = 'F1'
+                    $Crk.CurrentRow = 0
+                    $Crk.CurrentColumn = 5
+                    $Crk.firstmove = $false
+
+                    $MoveSuccess = $true
+                    $pc.firstmove = $false
+                } elseif (($dst -eq 'C1') -and `
+                          ($wAR.firstmove -eq $true)) {
+                    
+                    $Crk = $board[0, 0]
+                    $board[0, 0] = $Empty
+                    $Crk.CurrentPosition = 'D1'
+                    $Crk.CurrentRow = 0
+                    $Crk.CurrentColumn = 3
+                    $Crk.firstmove = $false
+
+                    $MoveSuccess = $true
+                    $pc.firstmove = $false
+                }
+            } elseif (($pc.firstmove -eq $true) -and `
+                      ($pc.color -eq 'Black')) {
+                if (($dst -eq 'G8') -and `
+                    ($bHR.firstmove -eq $true)) {
+                    
+                    $Crk = $board[7, 7]
+                    $board[7, 7] = $Empty
+                    $Crk.CurrentPosition = 'F8'
+                    $Crk.CurrentRow = 7
+                    $Crk.CurrentColumn = 5
+                    $Crk.firstmove = $false
+
+                    $MoveSuccess = $true
+                    $pc.firstmove = $false
+                } elseif (($dst -eq 'C8') -and `
+                          ($bAR.firstmove -eq $true)) {
+                    
+                    $Crk = $board[7, 0]
+                    $board[7, 0] = $Empty
+                    $Crk.CurrentPosition = 'F1'
+                    $Crk.CurrentRow = 7
+                    $Crk.CurrentColumn = 3
+                    $Crk.firstmove = $false
+
+                    $MoveSuccess = $true
+                    $pc.firstmove = $false
+                }
+            } else {
+                Write-Error "Illegal King Move"
+            }
+        }
 	}
 
     if ($MoveSuccess) {
@@ -516,28 +516,37 @@ Function Move-Piece {
         }
         
         $board[$CurrentRow, $CurrentColumn] = $Empty
-        $pc.CurrentPosition = $dst.ToUpper()
-        $pc.CurrentRow = $DesiredRow
-        $pc.CurrentColumn = $DesiredColumn 
+		$pc.CurrentPosition = $dst.ToUpper()
+		$pc.CurrentRow = $DesiredRow
+		$pc.CurrentColumn = $DesiredColumn
+
+		#Pawn Promotion
+		if (($pc.GetType().Name -eq 'Pawn') -and ($DesiredRow -eq 0)) {
+			[ValidateSet('Knight', 'Bishop', 'Rook', 'Queen')]$ptype = Read-Host 'Promote black pawn to'
+			
+			$pc.Type = $ptype
+			switch ($ptype) {
+				'Knight' {$pc.Icon = '♞'}
+				'Bishop' {$pc.Icon = '♝'}
+				'Rook' {$pc.Icon = '♜'}
+				'Queen' {$pc.Icon = '♛'}
+			}
+		} elseif (($pc.GetType().Name -eq 'Pawn') -and ($DesiredRow -eq 7)) {
+			[ValidateSet('Knight', 'Bishop', 'Rook', 'Queen')]$ptype = Read-Host 'Promote white pawn to'
+			
+			$pc.Type = $ptype
+			switch ($ptype) {
+				'Knight' {$pc.Icon = '♘'}
+				'Bishop' {$pc.Icon = '♗'}
+				'Rook' {$pc.Icon = '♖'}
+				'Queen' {$pc.Icon = '♕'}
+			}
+		}
         
 		$logstring += $dst
 		$logstring += "`t"
 		if (!($Player1Turn)) {
 			Add-Content -Encoding Unicode $logpath $logstring 
-		}
-
-		if (($pc.GetType().Name -eq 'Pawn') -and ($CurrentRow -eq 0)) {
-			#$pc.Promote($dst)
-			$board[$CurrentRow, $CurrentColumn].Alive = $false
-			$board[$CurrentRow, $CurrentColumn].CurrentPosition = $null
-			$board[$CurrentRow, $CurrentColumn].CurrentRow = $null
-			$board[$CurrentRow, $CurrentColumn].CurrentColumn = $null
-		} elseif (($pc.GetType().Name -eq 'Pawn') -and ($CurrentRow -eq 7)) {
-			#$pc.Promote($dst)
-			$board[$CurrentRow, $CurrentColumn].Alive = $false
-			$board[$CurrentRow, $CurrentColumn].CurrentPosition = $null
-			$board[$CurrentRow, $CurrentColumn].CurrentRow = $null
-			$board[$CurrentRow, $CurrentColumn].CurrentColumn = $null
 		}
 
 		$turncounter += 1
@@ -578,12 +587,10 @@ Function Get-Row {
 
 #Gives all classes that inherit(:) this class the base properties
 Class ChessPiece {
-    [Boolean]$Alive=$true
-    [String]$Icon
-    [String]$Color
-    [String]$StartingPosition
-    [Int]$StartingRow
-    [Int]$StartingColumn
+    [bool]$Alive=$true
+	[string]$Type
+    [string]$Icon
+    [ValidateSet('White', 'Black')][String]$Color
     [String]$CurrentPosition
     [ValidateRange(0,7)][Int]$CurrentRow
     [ValidateRange(0,7)][Int]$CurrentColumn
@@ -592,35 +599,30 @@ Class ChessPiece {
 Class Pawn : ChessPiece {
     [bool]$firstmove = $true
 	[int]$inpassing = 0
-    Pawn([string]$Position) {
-        $this.StartingPosition = $Position
-        $this.StartingRow = Get-Row $Position[1] 
-        $this.StartingColumn = Get-Column $Position[0]
+	[string]$Type = $this.GetType().Name
+    Pawn([string]$Position, [string]$color) {
+        $this.Color = $color
         $this.CurrentPosition = $Position
         $this.CurrentRow = Get-Row $Position[1] 
         $this.CurrentColumn = Get-Column $Position[0]
 
-        if ($(Get-Row $Position[1]) -eq '1') {
+        if ($color -eq 'White') {
             $this.Icon = '♙'
-            $this.Color = 'White'
-        } elseif ($(Get-Row $Position[1]) -eq '6') {
+        } elseif ($color -eq 'Black') {
             $this.Icon = '♟'
-            $this.Color = 'Black'
         }
     }
 
-	Promote([string]$position) {
+	<#Promote([string]$position) {
 		$this = [Queen]::new($Position, $this.Color)
-	}
+	}#>
 }
 
 Class Rook : ChessPiece {
 	[bool]$firstmove = $true
+	[string]$Type = $this.GetType().Name
     Rook([string]$Position, [string]$color) {
 		$this.Color = $color
-        $this.StartingPosition = $Position
-        $this.StartingRow = Get-Row $Position[1] 
-        $this.StartingColumn = Get-Column $Position[0]
         $this.CurrentPosition = $Position
         $this.CurrentRow = Get-Row $Position[1] 
         $this.CurrentColumn = Get-Column $Position[0]
@@ -634,11 +636,9 @@ Class Rook : ChessPiece {
 }
 
 Class Knight : ChessPiece {
+	[string]$Type = $this.GetType().Name
     Knight([string]$Position, [string]$color) {
 		$this.Color = $color
-        $this.StartingPosition = $Position
-        $this.StartingRow = Get-Row $Position[1] 
-        $this.StartingColumn = Get-Column $Position[0]
         $this.CurrentPosition = $Position
         $this.CurrentRow = Get-Row $Position[1] 
         $this.CurrentColumn = Get-Column $Position[0]
@@ -652,11 +652,9 @@ Class Knight : ChessPiece {
 }
 
 Class Bishop : ChessPiece {
+	[string]$Type = $this.GetType().Name
     Bishop([String]$Position, [string]$color) {
 		$this.Color = $color
-        $this.StartingPosition = $Position
-        $this.StartingRow = Get-Row $Position[1] 
-        $this.StartingColumn = Get-Column $Position[0]
         $this.CurrentPosition = $Position
         $this.CurrentRow = Get-Row $Position[1] 
         $this.CurrentColumn = Get-Column $Position[0]
@@ -670,11 +668,9 @@ Class Bishop : ChessPiece {
 }
 
 Class Queen : ChessPiece {
+	[string]$Type = $this.GetType().Name
     Queen([String]$Position, [string]$color) {
 		$this.Color = $color
-        $this.StartingPosition = $Position
-        $this.StartingRow = Get-Row $Position[1] 
-        $this.StartingColumn = Get-Column $Position[0]
         $this.CurrentPosition = $Position
         $this.CurrentRow = Get-Row $Position[1] 
         $this.CurrentColumn = Get-Column $Position[0]
@@ -689,20 +685,17 @@ Class Queen : ChessPiece {
 
 Class King : ChessPiece {
 	[bool]$firstmove = $true
-	King([String]$Position) {
-        $this.StartingPosition = $Position
-        $this.StartingRow = Get-Row $Position[1] 
-        $this.StartingColumn = Get-Column $Position[0]
+	[string]$Type = $this.GetType().Name
+	King([String]$Position, [string]$color) {
+        $this.Color = $color
         $this.CurrentPosition = $Position
         $this.CurrentRow = Get-Row $Position[1] 
         $this.CurrentColumn = Get-Column $Position[0]
 
-        If ($this.StartingRow -eq '0') {
+        if ($color -eq 'White') {
             $this.Icon = '♔'
-            $this.Color = 'White'
-        } ElseIf ($this.StartingRow -eq '7') {
+        } elseif ($color -eq 'Black') {
             $this.Icon = '♚'
-            $this.Color = 'Black'
         }
     }
 }
@@ -722,24 +715,36 @@ Class Blank {
 [bool]$Script:Player1Turn = $true
 [string]$Script:logpath = 'C:\Users\z003ndjt\Desktop\Powershell\Powershell-Chess-master\log.txt'
 
-$wAP = [Pawn]::New('A2');$wBP = [Pawn]::New('B2');$wCP = [Pawn]::New('C2');$wDP = [Pawn]::New('D2');
-$wEP = [Pawn]::New('E2');$wFP = [Pawn]::New('F2');$wGP = [Pawn]::New('G2');$wHP = [Pawn]::New('H2');
+$wAP = [Pawn]::New('A2', 'White')
+$wBP = [Pawn]::New('B2', 'White')
+$wCP = [Pawn]::New('C2', 'White')
+$wDP = [Pawn]::New('D2', 'White')
+$wEP = [Pawn]::New('E2', 'White')
+$wFP = [Pawn]::New('F2', 'White')
+$wGP = [Pawn]::New('G2', 'White')
+$wHP = [Pawn]::New('H2', 'White')
 $wAR = [Rook]::New('A1', 'White')
 $wBN = [Knight]::New('B1', 'White')
 $wCB = [Bishop]::New('C1', 'White')
 $wQ  = [Queen]::New('D1', 'White')
-$wK  = [King]::New('E1')
+$wK  = [King]::New('E1', 'White')
 $wFB = [Bishop]::New('F1', 'White')
 $wGN = [Knight]::New('G1', 'White')
 $wHR = [Rook]::New('H1', 'White')
 
-$bAP = [Pawn]::New('A7');$bBP = [Pawn]::New('B7');$bCP = [Pawn]::New('C7');$bDP = [Pawn]::New('D7');
-$bEP = [Pawn]::New('E7');$bFP = [Pawn]::New('F7');$bGP = [Pawn]::New('G7');$bHP = [Pawn]::New('H7');
+$bAP = [Pawn]::New('A7', 'Black')
+$bBP = [Pawn]::New('B7', 'Black')
+$bCP = [Pawn]::New('C7', 'Black')
+$bDP = [Pawn]::New('D7', 'Black')
+$bEP = [Pawn]::New('E7', 'Black')
+$bFP = [Pawn]::New('F7', 'Black')
+$bGP = [Pawn]::New('G7', 'Black')
+$bHP = [Pawn]::New('H7', 'Black')
 $bAR = [Rook]::New('A8', 'Black')
 $bBN = [Knight]::New('B8', 'Black')
 $bCB = [Bishop]::New('C8', 'Black')
 $bQ  = [Queen]::New('D8', 'Black')
-$bK  = [King]::New('E8')
+$bK  = [King]::New('E8', 'Black')
 $bFB = [Bishop]::New('F8', 'Black')
 $bGN = [Knight]::New('G8', 'Black')
 $bHR = [Rook]::New('H8', 'Black')
