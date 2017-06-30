@@ -45,19 +45,18 @@ they only appear when run in PowerShell ISE.
 
 .TODO
     - Normal chess notation for moves
-	- Check logic
 	- Checkmate logic
     - Outsource AI to some engine?
 #>
 
 #Displays the gameboard
-Function Draw-Board {
+Function Publish-Board {
 	#Clear the console
     #Clear-Host
 
 	#Get arrays of all piece that are still alive
-    [Array] $CurrentWhite = $WhitePieces | Where {$_.Alive -eq $true}
-    [Array] $CurrentBlack = $BlackPieces | Where {$_.Alive -eq $true}
+    [Array] $CurrentWhite = $WhitePieces | Where-Object {$_.Alive -eq $true}
+    [Array] $CurrentBlack = $BlackPieces | Where-Object {$_.Alive -eq $true}
     
 	#Place all the white pieces
     foreach ($pc in $CurrentWhite) {
@@ -78,30 +77,30 @@ Function Draw-Board {
     }
 
     #Draw the board
-    Write-Host '     A    B    C   D    E    F   G    H'
-    Write-Host '   -------------------------------------- '
+    Write-Host '     A   B   C   D   E   F   G   H'
+    Write-Host '   --------------------------------- '
     Write-Host ' 8 |'$board[0,7].Icon'|'$board[1,7].Icon'|'$board[2,7].Icon'|'$board[3,7].Icon'|'$board[4,7].Icon'|'$board[5,7].Icon'|'$board[6,7].Icon'|'$board[7,7].Icon'| 8'
-    Write-Host '   -------------------------------------- '
+    Write-Host '   --------------------------------- '
     Write-Host ' 7 |'$board[0,6].Icon'|'$board[1,6].Icon'|'$board[2,6].Icon'|'$board[3,6].Icon'|'$board[4,6].Icon'|'$board[5,6].Icon'|'$board[6,6].Icon'|'$board[7,6].Icon'| 7'
-    Write-Host '   -------------------------------------- '
+    Write-Host '   --------------------------------- '
     Write-Host ' 6 |'$board[0,5].Icon'|'$board[1,5].Icon'|'$board[2,5].Icon'|'$board[3,5].Icon'|'$board[4,5].Icon'|'$board[5,5].Icon'|'$board[6,5].Icon'|'$board[7,5].Icon'| 6'
-    Write-Host '   -------------------------------------- '
+    Write-Host '   --------------------------------- '
     Write-Host ' 5 |'$board[0,4].Icon'|'$board[1,4].Icon'|'$board[2,4].Icon'|'$board[3,4].Icon'|'$board[4,4].Icon'|'$board[5,4].Icon'|'$board[6,4].Icon'|'$board[7,4].Icon'| 5'
-    Write-Host '   -------------------------------------- '
+    Write-Host '   --------------------------------- '
     Write-Host ' 4 |'$board[0,3].Icon'|'$board[1,3].Icon'|'$board[2,3].Icon'|'$board[3,3].Icon'|'$board[4,3].Icon'|'$board[5,3].Icon'|'$board[6,3].Icon'|'$board[7,3].Icon'| 4'
-    Write-Host '   -------------------------------------- '
+    Write-Host '   --------------------------------- '
     Write-Host ' 3 |'$board[0,2].Icon'|'$board[1,2].Icon'|'$board[2,2].Icon'|'$board[3,2].Icon'|'$board[4,2].Icon'|'$board[5,2].Icon'|'$board[6,2].Icon'|'$board[7,2].Icon'| 3'
-    Write-Host '   -------------------------------------- '
+    Write-Host '   --------------------------------- '
     Write-Host ' 2 |'$board[0,1].Icon'|'$board[1,1].Icon'|'$board[2,1].Icon'|'$board[3,1].Icon'|'$board[4,1].Icon'|'$board[5,1].Icon'|'$board[6,1].Icon'|'$board[7,1].Icon'| 2'
-    Write-Host '   -------------------------------------- '
+    Write-Host '   --------------------------------- '
     Write-Host ' 1 |'$board[0,0].Icon'|'$board[1,0].Icon'|'$board[2,0].Icon'|'$board[3,0].Icon'|'$board[4,0].Icon'|'$board[5,0].Icon'|'$board[6,0].Icon'|'$board[7,0].Icon'| 1'
-    Write-Host '   -------------------------------------- '
-    Write-Host '     A    B    C   D    E    F   G    H'
+    Write-Host '   --------------------------------- '
+    Write-Host '     A   B   C   D   E   F   G   H'
 
     if ($wK.Alive -eq $false) {
-		echo "Black Wins!"
+		Write-Output "Black Wins!"
 	} elseif ($bK.Alive -eq $false) {
-		echo "White Wins!"
+		Write-Output "White Wins!"
 	} else {
 		#Ask the player what they would like to move
 		if($Player1Turn) {
@@ -113,7 +112,7 @@ Function Draw-Board {
 				[ValidateScript({$_.Length -eq 2})]$dst = Read-Host 'White ending square'
 			} Catch {
 				Write-Error "Illegal white move"
-				Draw-Board
+				Publish-Board
 				Break
 			}
 		} else {
@@ -125,7 +124,7 @@ Function Draw-Board {
 				[ValidateScript({$_.Length -eq 2})]$dst = Read-Host 'Black ending square'
 			} Catch {
 				Write-Error "Illegal black move"
-				Draw-Board
+				Publish-Board
 				Break
 			}
 		}
@@ -150,25 +149,25 @@ Function Move-Piece {
         $pc = $board[$CurrentColumn, $CurrentRow]
     } catch {
         Write-Error "Out of bounds"
-        Draw-Board
+        Publish-Board
         break
     }
 
 	#Moving nothing
     if ($board[$CurrentColumn, $CurrentRow] -eq $Empty) {
         Write-Error "There is nothing there."
-		Draw-Board
+		Publish-Board
     }
 	#Moving nowhere
     if (($CurrentRow -eq $DesiredRow) -and ($CurrentColumn -eq $DesiredColumn)) {
 		Write-Error "That wouldn't move anywhere."
-		Draw-Board
+		Publish-Board
     }
 	#Moving into another one of your pieces
     if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
         if ($pc.Color -eq $board[$DesiredColumn, $DesiredRow].Color) {
 			Write-Error "Collision with own team"
-			Draw-Board
+			Publish-Board
         }
     }
 
@@ -187,22 +186,24 @@ Function Move-Piece {
 					$MoveY *= -1
 				}
 				if (($MoveX -eq 0) -and ($MoveY -eq 1)) {
-					if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
-						Write-Error "Illegal Pawn Move 1"
-					} else {
+					if ($board[$DesiredColumn, $DesiredRow] -eq $Empty) {
 						$MoveSuccess = $true
 						$pc.firstmove = $false
+					} else {
+						Write-Error "Illegal Pawn Move: Blocked Path"
 					}
 				} elseif (($MoveX -eq 0) -and ($MoveY -eq 2)) {
-					if (($pc.firstmove = $true) -and `
-						(($board[$DesiredColumn, $DesiredRow] -eq $Empty) -and `
-						($board[($DesiredColumn + 1), $DesiredRow] -eq $Empty))) {
-
-						$MoveSuccess = $true
-						$pc.firstmove = $false
-                        $pc.inpassing = $turncounter
+					if ($pc.firstmove -eq $true) {
+						if (($board[$DesiredColumn, $DesiredRow] -eq $Empty) -and `
+							($board[$DesiredColumn + 1, $DesiredRow] -eq $Empty)) {
+								$MoveSuccess = $true
+								$pc.firstmove = $false
+								$pc.inpassing = $turncounter
+						} else {
+							Write-Error "Illegal Pawn Move: Blocked Path"
+						}
 					} else {
-						Write-Error "Illegal Pawn Move 2"
+						Write-Error "Illegal Pawn Move: Cannot Move 2 Spaces"
 					}
 				} elseif (($MoveX -eq 1) -and ($MoveY -eq 1)) {
 					if ($board[$DesiredColumn, $DesiredRow] -eq $Empty) {
@@ -218,7 +219,7 @@ Function Move-Piece {
 							$enpassant.CurrentRow = $null
 							$enpassant.CurrentColumn = $null
 						} else {
-							Write-Error 'Cannot capture en passant'
+							Write-Error 'Illegal Pawn Move: Cannot en passant'
 						}
 					} else {
 						$Attack = $true
@@ -254,7 +255,7 @@ Function Move-Piece {
 						for ($i = 1; $i -lt $MoveX; $i++) {
 							if ($board[($CurrentColumn + $i) , ($CurrentRow + $i)] -ne $Empty) {
 								Write-Error "Illegal Bishop Move"
-								Draw-Board
+								Publish-Board
 								break
 							}
 						}
@@ -262,7 +263,7 @@ Function Move-Piece {
 						for ($i = 1; $i -lt $MoveX; $i++) {
 							if ($board[($CurrentColumn + $i) , ($CurrentRow - $i)] -ne $Empty) {
 								Write-Error "Illegal Bishop Move"
-								Draw-Board
+								Publish-Board
 								break
 							}
 						}
@@ -272,7 +273,7 @@ Function Move-Piece {
 						for ($i = 1; $i -lt $MoveY; $i++) {
 							if ($board[($CurrentColumn - $i) , ($CurrentRow + $i)] -ne $Empty) {
 								Write-Error "Illegal Bishop Move"
-								Draw-Board
+								Publish-Board
 								break
 							}
 						}
@@ -280,7 +281,7 @@ Function Move-Piece {
 						for ($i = 1; $i -lt [math]::abs($MoveX); $i++) {
 							if ($board[($CurrentColumn - $i) , ($CurrentRow - $i)] -ne $Empty) {
 								Write-Error "Illegal Bishop Move"
-								Draw-Board
+								Publish-Board
 								break
 							}
 						}
@@ -301,7 +302,7 @@ Function Move-Piece {
 					for ($i = 1; $i -lt $MoveX; $i++) {
 						if ($board[($CurrentColumn + $i), $CurrentRow] -ne $Empty) {
 								Write-Error "Illegal Rook Move"
-								Draw-Board
+								Publish-Board
 								break
 						}
 					}
@@ -309,7 +310,7 @@ Function Move-Piece {
 					for ($i = 1; $i -lt [math]::abs($MoveX); $i++) {
 						if ($board[($CurrentColumn - $i), $CurrentRow] -ne $Empty) {
 								Write-Error "Illegal Rook Move"
-								Draw-Board
+								Publish-Board
 								break
 						}
 					}
@@ -317,7 +318,7 @@ Function Move-Piece {
 					for ($i = 1; $i -lt $MoveY; $i++) {
 						if ($board[$CurrentColumn, ($CurrentRow + $i)] -ne $Empty) {
 								Write-Error "Illegal Rook Move"
-								Draw-Board
+								Publish-Board
 								break
 						}
 					}
@@ -325,7 +326,7 @@ Function Move-Piece {
 					for ($i = 1; $i -lt [math]::abs($MoveY); $i++) {
 						if ($board[$CurrentColumn, ($CurrentRow - $i)] -ne $Empty) {
 								Write-Error "Illegal Rook Move"
-								Draw-Board
+								Publish-Board
 								break
 						}
 					}
@@ -413,7 +414,7 @@ Function Move-Piece {
 						for ($i = 1; $i -lt $MoveX; $i++) {
 							if ($board[($CurrentColumn + $i) , ($CurrentRow + $i)] -ne $Empty) {
 								Write-Error "Illegal Queen Move"
-								Draw-Board
+								Publish-Board
 								break
 							}
 						}
@@ -421,7 +422,7 @@ Function Move-Piece {
 						for ($i = 1; $i -lt $MoveX; $i++) {
 							if ($board[($CurrentColumn + $i) , ($CurrentRow - $i)] -ne $Empty) {
 								Write-Error "Illegal Queen Move"
-								Draw-Board
+								Publish-Board
 								break
 							}
 						}
@@ -431,7 +432,7 @@ Function Move-Piece {
 						for ($i = 1; $i -lt $MoveY; $i++) {
 							if ($board[($CurrentColumn - $i), ($CurrentRow + $i)] -ne $Empty) {
 								Write-Error "Illegal Queen Move"
-								Draw-Board
+								Publish-Board
 								break
 							}
 						}
@@ -439,7 +440,7 @@ Function Move-Piece {
 						for ($i = 1; $i -lt [math]::abs($MoveX); $i++) {
 							if ($board[($CurrentColumn - $i) , ($CurrentRow - $i)] -ne $Empty) {
 								Write-Error "Illegal Queen Move"
-								Draw-Board
+								Publish-Board
 								break
 							}
 						}
@@ -455,7 +456,7 @@ Function Move-Piece {
 					for ($i = 1; $i -lt $MoveX; $i++) {
 						if ($board[($CurrentColumn + $i), $CurrentRow] -ne $Empty) {
 								Write-Error "Illegal Queen Move"
-								Draw-Board
+								Publish-Board
 								break
 						}
 					}
@@ -463,7 +464,7 @@ Function Move-Piece {
 					for ($i = 1; $i -lt [math]::abs($MoveX); $i++) {
 						if ($board[($CurrentColumn - $i), $CurrentRow] -ne $Empty) {
 								Write-Error "Illegal Queen Move"
-								Draw-Board
+								Publish-Board
 								break
 						}
 					}
@@ -471,7 +472,7 @@ Function Move-Piece {
 					for ($i = 1; $i -lt $MoveY; $i++) {
 						if ($board[$CurrentColumn, ($CurrentRow + $i)] -ne $Empty) {
 								Write-Error "Illegal Queen Move"
-								Draw-Board
+								Publish-Board
 								break
 						}
 					}
@@ -479,7 +480,7 @@ Function Move-Piece {
 					for ($i = 1; $i -lt [math]::abs($MoveY); $i++) {
 						if ($board[$CurrentColumn, ($CurrentRow - $i)] -ne $Empty) {
 								Write-Error "Illegal Queen Move"
-								Draw-Board
+								Publish-Board
 								break
 						}
 					}
@@ -496,9 +497,9 @@ Function Move-Piece {
 
     if ($MoveSuccess) {
 		if ($Player1Turn) {
-			$logstring = [string](($turncounter / 2) + 1) + " " + $pc.Icon
+			$logstring = [string](($turncounter / 2) + 1) + " " + $pc.Symbol
 		} else {
-			$logstring += $pc.Icon
+			$logstring += $pc.Symbol
 		}
 
 		if ($Attack) {
@@ -521,26 +522,50 @@ Function Move-Piece {
 			
 			$pc.Type = $ptype
 			switch ($ptype) {
-				'Knight' {$pc.Icon = '♞'}
-				'Bishop' {$pc.Icon = '♝'}
-				'Rook' {$pc.Icon = '♜'}
-				'Queen' {$pc.Icon = '♛'}
+				'Knight' {
+					$pc.Icon = '♞'
+					$pc.Symbol = 'N'
+				}
+				'Bishop' {
+					$pc.Icon = '♝'
+					$pc.Symbol = 'B'
+				}
+				'Rook' {
+					$pc.Icon = '♜'
+					$pc.Symbol = 'R'
+				}
+				'Queen' {
+					$pc.Icon = '♛'
+					$pc.Symbol = 'Q'
+				}
 			}
 		} elseif (($pc.GetType().Name -eq 'Pawn') -and ($DesiredRow -eq 7)) {
 			[ValidateSet('Knight', 'Bishop', 'Rook', 'Queen')]$ptype = Read-Host 'Promote white pawn to'
 			
 			$pc.Type = $ptype
 			switch ($ptype) {
-				'Knight' {$pc.Icon = '♘'}
-				'Bishop' {$pc.Icon = '♗'}
-				'Rook' {$pc.Icon = '♖'}
-				'Queen' {$pc.Icon = '♕'}
+				'Knight' {
+					$pc.Icon = '♘'
+					$pc.Symbol = 'N'
+				}
+				'Bishop' {
+					$pc.Icon = '♗'
+					$pc.Symbol = 'B'
+				}
+				'Rook' {
+					$pc.Icon = '♖'
+					$pc.Symbol = 'R'
+				}
+				'Queen' {
+					$pc.Icon = '♕'
+					$pc.Symbol = 'Q'
+				}
 			}
 		}
         
 		#Get arrays of all piece that are still alive
-		[Array] $CurrentWhite = $WhitePieces | Where {$_.Alive -eq $true}
-		[Array] $CurrentBlack = $BlackPieces | Where {$_.Alive -eq $true}
+		[Array] $CurrentWhite = $WhitePieces | Where-Object {$_.Alive -eq $true}
+		[Array] $CurrentBlack = $BlackPieces | Where-Object {$_.Alive -eq $true}
     
 		#Place all the white pieces
 		foreach ($pc in $CurrentWhite) {
@@ -564,32 +589,32 @@ Function Move-Piece {
 
 		if ($Player1Turn) {
 			foreach ($pc in $CurrentWhite) {
-				if ($(Check-Validmove $pc.CurrentPosition $bK.CurrentPosition)[0] -eq $true) {
+				if ($(Test-Validmove $pc.CurrentPosition $bK.CurrentPosition)[0] -eq $true) {
 					Write-Host 'Check'
 					$logstring += '+'
 					break
 				}
 			}
-			$logstring += "`t`t"
 		} else {
 			foreach ($pc in $CurrentBlack) {
-				if ($(Check-Validmove $pc.CurrentPosition $wK.CurrentPosition)[0] -eq $true) {
+				if ($(Test-Validmove $pc.CurrentPosition $wK.CurrentPosition)[0] -eq $true) {
 					Write-Host 'Check'
 					$logstring += '+'
 					break
 				}
 			}
-			Add-Content -Encoding Unicode $logpath $logstring 
 		}
+
+		Add-Content -Encoding Unicode $logpath $logstring
 
 		$turncounter += 1
         $Player1Turn = (!($Player1Turn))           
     }
 
-    Draw-Board
+    Publish-Board
 }
 
-Function Check-Validmove {
+Function Test-Validmove {
     param ([string]$src, [string]$dst)
 
     [bool]$Attack = $false
@@ -605,25 +630,25 @@ Function Check-Validmove {
         $pc = $board[$CurrentColumn, $CurrentRow]
     } catch {
         Write-Error "Out of bounds"
-        Draw-Board
+        Publish-Board
         break
     }
 
 	#Moving nothing
     if ($board[$CurrentColumn, $CurrentRow] -eq $Empty) {
         Write-Error "There is nothing there."
-		Draw-Board
+		Publish-Board
     }
 	#Moving nowhere
     if (($CurrentRow -eq $DesiredRow) -and ($CurrentColumn -eq $DesiredColumn)) {
 		Write-Error "That wouldn't move anywhere."
-		Draw-Board
+		Publish-Board
     }
 	#Moving into another one of your pieces
     if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
         if ($pc.Color -eq $board[$DesiredColumn, $DesiredRow].Color) {
 			Write-Error "Collision with own team"
-			Draw-Board
+			Publish-Board
         }
     }
 
@@ -954,6 +979,7 @@ Class ChessPiece {
     [bool]$Alive=$true
 	[string]$Type
     [string]$Icon
+	[string]$Symbol
     [ValidateSet('White', 'Black')][String]$Color
     [String]$CurrentPosition
     [ValidateRange(0,7)][Int]$CurrentRow
@@ -964,6 +990,7 @@ Class Pawn : ChessPiece {
     [bool]$firstmove = $true
 	[int]$inpassing = 0
 	[string]$Type = $this.GetType().Name
+	[string]$Symbol = " "
     Pawn([string]$Position, [string]$color) {
         $this.Color = $color
         $this.CurrentPosition = $Position
@@ -981,6 +1008,7 @@ Class Pawn : ChessPiece {
 Class Rook : ChessPiece {
 	[bool]$firstmove = $true
 	[string]$Type = $this.GetType().Name
+	[string]$Symbol = "R"
     Rook([string]$Position, [string]$color) {
 		$this.Color = $color
         $this.CurrentPosition = $Position
@@ -997,6 +1025,7 @@ Class Rook : ChessPiece {
 
 Class Knight : ChessPiece {
 	[string]$Type = $this.GetType().Name
+	[string]$Symbol = "N"
     Knight([string]$Position, [string]$color) {
 		$this.Color = $color
         $this.CurrentPosition = $Position
@@ -1013,6 +1042,7 @@ Class Knight : ChessPiece {
 
 Class Bishop : ChessPiece {
 	[string]$Type = $this.GetType().Name
+	[string]$Symbol = "B"
     Bishop([String]$Position, [string]$color) {
 		$this.Color = $color
         $this.CurrentPosition = $Position
@@ -1029,6 +1059,7 @@ Class Bishop : ChessPiece {
 
 Class Queen : ChessPiece {
 	[string]$Type = $this.GetType().Name
+	[string]$Symbol = "Q"
     Queen([String]$Position, [string]$color) {
 		$this.Color = $color
         $this.CurrentPosition = $Position
@@ -1046,6 +1077,7 @@ Class Queen : ChessPiece {
 Class King : ChessPiece {
 	[bool]$firstmove = $true
 	[string]$Type = $this.GetType().Name
+	[string]$Symbol = "K"
 	King([String]$Position, [string]$color) {
         $this.Color = $color
         $this.CurrentPosition = $Position
@@ -1061,7 +1093,7 @@ Class King : ChessPiece {
 }
 
 Class Blank {
-    [String]$Icon='     '
+    [String]$Icon=' '
 }
 
 ###########################
@@ -1073,7 +1105,8 @@ Class Blank {
 
 #Creates a turn status
 [bool]$Script:Player1Turn = $true
-[string]$Script:logpath = 'C:\Users\z003ndjt\Desktop\Powershell\Powershell-Chess-master\log.txt'
+$DesktopPath = [Environment]::GetFolderPath("Desktop")
+[string]$Script:logpath = $DesktopPath + '\log.txt'
 
 $wAP = [Pawn]::New('A2', 'White')
 $wBP = [Pawn]::New('B2', 'White')
@@ -1125,7 +1158,10 @@ $Empty = [Blank]::New()
     $bCB,$bFB,$bQ,$bK
 )
 
+#Equivalent of touch command to ensure a log exists
+Write-Output $null >> $logpath
+
 Clear-Content $logpath
-Add-Content -Encoding Unicode $logpath "  White          Black`r`n  --------------------"
+Add-Content -Encoding Unicode $logpath "White        Black`r`n--------------------"
 [int]$Script:turncounter = 0
-Draw-Board
+Publish-Board
