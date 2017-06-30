@@ -194,8 +194,8 @@ Function Move-Piece {
 					}
 				} elseif (($MoveX -eq 0) -and ($MoveY -eq 2)) {
 					if ($pc.firstmove -eq $true) {
-						if (($board[$DesiredColumn, $DesiredRow] -eq $Empty) -and `
-							($board[$DesiredColumn + 1, $DesiredRow] -eq $Empty)) {
+						if ($board[$DesiredColumn, $DesiredRow] -eq $Empty -and `
+							$board[($DesiredColumn + 1), $DesiredRow] -eq $Empty) {
 								$MoveSuccess = $true
 								$pc.firstmove = $false
 								$pc.inpassing = $turncounter
