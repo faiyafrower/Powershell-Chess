@@ -254,7 +254,7 @@ Function Move-Piece {
 					if ($MoveY -gt 0) {
 						for ($i = 1; $i -lt $MoveX; $i++) {
 							if ($board[($CurrentColumn + $i) , ($CurrentRow + $i)] -ne $Empty) {
-								Write-Error "Illegal Bishop Move"
+								Write-Error "Illegal Bishop Move: Blocked Path"
 								Publish-Board
 								break
 							}
@@ -262,7 +262,7 @@ Function Move-Piece {
 					} else {
 						for ($i = 1; $i -lt $MoveX; $i++) {
 							if ($board[($CurrentColumn + $i) , ($CurrentRow - $i)] -ne $Empty) {
-								Write-Error "Illegal Bishop Move"
+								Write-Error "Illegal Bishop Move: Blocked Path"
 								Publish-Board
 								break
 							}
@@ -272,7 +272,7 @@ Function Move-Piece {
 					if ($MoveY -gt 0) {
 						for ($i = 1; $i -lt $MoveY; $i++) {
 							if ($board[($CurrentColumn - $i) , ($CurrentRow + $i)] -ne $Empty) {
-								Write-Error "Illegal Bishop Move"
+								Write-Error "Illegal Bishop Move: Blocked Path"
 								Publish-Board
 								break
 							}
@@ -280,7 +280,7 @@ Function Move-Piece {
 					} else {
 						for ($i = 1; $i -lt [math]::abs($MoveX); $i++) {
 							if ($board[($CurrentColumn - $i) , ($CurrentRow - $i)] -ne $Empty) {
-								Write-Error "Illegal Bishop Move"
+								Write-Error "Illegal Bishop Move: Blocked Path"
 								Publish-Board
 								break
 							}
@@ -301,7 +301,7 @@ Function Move-Piece {
 				if ($MoveX -gt 0) {
 					for ($i = 1; $i -lt $MoveX; $i++) {
 						if ($board[($CurrentColumn + $i), $CurrentRow] -ne $Empty) {
-								Write-Error "Illegal Rook Move"
+								Write-Error "Illegal Rook Move: Blocked Path"
 								Publish-Board
 								break
 						}
@@ -309,7 +309,7 @@ Function Move-Piece {
 				} elseif ($MoveX -lt 0) {
 					for ($i = 1; $i -lt [math]::abs($MoveX); $i++) {
 						if ($board[($CurrentColumn - $i), $CurrentRow] -ne $Empty) {
-								Write-Error "Illegal Rook Move"
+								Write-Error "Illegal Rook Move: Blocked Path"
 								Publish-Board
 								break
 						}
@@ -317,7 +317,7 @@ Function Move-Piece {
 				} elseif ($MoveY -gt 0) {
 					for ($i = 1; $i -lt $MoveY; $i++) {
 						if ($board[$CurrentColumn, ($CurrentRow + $i)] -ne $Empty) {
-								Write-Error "Illegal Rook Move"
+								Write-Error "Illegal Rook Move: Blocked Path"
 								Publish-Board
 								break
 						}
@@ -325,7 +325,7 @@ Function Move-Piece {
 				} else {
 					for ($i = 1; $i -lt [math]::abs($MoveY); $i++) {
 						if ($board[$CurrentColumn, ($CurrentRow - $i)] -ne $Empty) {
-								Write-Error "Illegal Rook Move"
+								Write-Error "Illegal Rook Move: Blocked Path"
 								Publish-Board
 								break
 						}
