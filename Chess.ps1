@@ -497,19 +497,26 @@ Function Move-Piece {
 
     if ($MoveSuccess) {
 		if ($Player1Turn) {
-			$logstring = [string](($turncounter / 2) + 1) + " " + $pc.Symbol
+			$logstring = [string]($turncounter/2 + 1) + " " + $pc.Symbol
+			if ($Attack) {
+				$board[$DesiredColumn, $DesiredRow].Alive = $false
+				$board[$DesiredColumn, $DesiredRow].CurrentPosition = $null
+				$board[$DesiredColumn, $DesiredRow].CurrentRow = $null
+				$board[$DesiredColumn, $DesiredRow].CurrentColumn = $null
+
+				$logstring += 'x'
+			}
 		} else {
-			$logstring += $pc.Symbol
+			$logstring2 = $pc.Symbol
+			if ($Attack) {
+				$board[$DesiredColumn, $DesiredRow].Alive = $false
+				$board[$DesiredColumn, $DesiredRow].CurrentPosition = $null
+				$board[$DesiredColumn, $DesiredRow].CurrentRow = $null
+				$board[$DesiredColumn, $DesiredRow].CurrentColumn = $null
+
+				$logstring2 += 'x'
+			}
 		}
-
-		if ($Attack) {
-            $board[$DesiredColumn, $DesiredRow].Alive = $false
-			$board[$DesiredColumn, $DesiredRow].CurrentPosition = $null
-			$board[$DesiredColumn, $DesiredRow].CurrentRow = $null
-			$board[$DesiredColumn, $DesiredRow].CurrentColumn = $null
-
-			$logstring += 'x'
-        }
         
         $board[$CurrentColumn, $CurrentRow] = $Empty
 		$pc.CurrentPosition = $dst.ToUpper()
@@ -585,9 +592,8 @@ Function Move-Piece {
 			}
 		}
 
-		$logstring += $dst
-
 		if ($Player1Turn) {
+			$logstring += $dst
 			foreach ($pc in $CurrentWhite) {
 				if ($(Test-Validmove $pc.CurrentPosition $bK.CurrentPosition)[0] -eq $true) {
 					Write-Host 'Check'
@@ -596,6 +602,7 @@ Function Move-Piece {
 				}
 			}
 		} else {
+			$logstring2 += $dst
 			foreach ($pc in $CurrentBlack) {
 				if ($(Test-Validmove $pc.CurrentPosition $wK.CurrentPosition)[0] -eq $true) {
 					Write-Host 'Check'
@@ -603,14 +610,12 @@ Function Move-Piece {
 					break
 				}
 			}
+			$logentry = $logstring + "`t`t" + $logstring2
+			Add-Content -Encoding Unicode $logpath $logentry
 		}
-
-		Add-Content -Encoding Unicode $logpath $logstring
-
-		$turncounter += 1
-        $Player1Turn = (!($Player1Turn))           
+		$Script:turncounter += 1
+        $Player1Turn = (!($Player1Turn))
     }
-
     Publish-Board
 }
 
@@ -1160,8 +1165,7 @@ $Empty = [Blank]::New()
 
 #Equivalent of touch command to ensure a log exists
 Write-Output $null >> $logpath
-
 Clear-Content $logpath
-Add-Content -Encoding Unicode $logpath "White        Black`r`n--------------------"
+Add-Content -Encoding Unicode $logpath "  White`t`tBlack`r`n  --------------------"
 [int]$Script:turncounter = 0
 Publish-Board
