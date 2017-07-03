@@ -45,34 +45,9 @@ they only appear when run in PowerShell ISE.
     0.2.0 - Michael Shen - 07-03-2017 - Overhaul into functional state
 #>
 
-#Displays the gameboard
+#Draws the board to the screen
 Function Publish-Board {
-    #Clear the console
-    #Clear-Host
-
-    #Get arrays of all piece that are still alive
-    [Array] $CurrentWhite = $WhitePieces | Where-Object {$_.Alive -eq $true}
-    [Array] $CurrentBlack = $BlackPieces | Where-Object {$_.Alive -eq $true}
-    
-    #Place all the white pieces
-    foreach ($pc in $CurrentWhite) {
-        $board[($pc.CurrentColumn),($pc.CurrentRow)] = $pc
-    }
-    #Place all the black pieces
-    foreach ($pc in $CurrentBlack) {
-        $board[($pc.CurrentColumn),($pc.CurrentRow)] = $pc
-    }
-
-    #Check for spaces without a piece in them, then fill it with the empty placeholder.
-    for ($i = 0; $i -le 7; $i++) {
-        for ($j = 0; $j -le 7; $j++) {
-            if ($board[$i, $j] -eq $null) {
-                $board[$i, $j] = $Empty
-            }
-        }
-    }
-
-    #Draw the board
+    #Draw the board and place pieces
     Write-Host '     A   B   C   D   E   F   G   H'
     Write-Host '   --------------------------------- '
     Write-Host ' 8 |'$board[0,7].Icon'|'$board[1,7].Icon'|'$board[2,7].Icon'|'$board[3,7].Icon'|'$board[4,7].Icon'|'$board[5,7].Icon'|'$board[6,7].Icon'|'$board[7,7].Icon'| 8'
@@ -92,14 +67,10 @@ Function Publish-Board {
     Write-Host ' 1 |'$board[0,0].Icon'|'$board[1,0].Icon'|'$board[2,0].Icon'|'$board[3,0].Icon'|'$board[4,0].Icon'|'$board[5,0].Icon'|'$board[6,0].Icon'|'$board[7,0].Icon'| 1'
     Write-Host '   --------------------------------- '
     Write-Host '     A   B   C   D   E   F   G   H'
-
-    if ($wK.Alive -eq $false) {
-        Write-Output "Black Wins!"
-    } elseif ($bK.Alive -eq $false) {
-        Write-Output "White Wins!"
-    } else {
+    
+    if ($Script:gameStatus -eq 0) {
         #Ask the player what they would like to move
-        if($Player1Turn) {
+        if($Script:Player1Turn) {
             Try {
                 [ValidateScript({$_.Length -eq 2})]$src = Read-Host 'White starting square'
                 [Int]$cc = Get-Column $src[0]
@@ -124,13 +95,36 @@ Function Publish-Board {
                 Break
             }
         }
+        New-Move $src $dst
+    }
+}
 
-        Move-Piece $src $dst
+Function Update-Board {
+    #Get arrays of all piece that are still alive
+    [Array]$CurrentWhite = $WhitePieces | Where-Object {$_.Alive -eq $true}
+    [Array]$CurrentBlack = $BlackPieces | Where-Object {$_.Alive -eq $true}
+
+    #Place all the white pieces
+    foreach ($pc in $CurrentWhite) {
+        $board[($pc.CurrentColumn),($pc.CurrentRow)] = $pc
+    }
+    #Place all the black pieces
+    foreach ($pc in $CurrentBlack) {
+        $board[($pc.CurrentColumn),($pc.CurrentRow)] = $pc
+    }
+
+    #Check for spaces without a piece in them, then fill it with the empty placeholder.
+    for ($i = 0; $i -le 7; $i++) {
+        for ($j = 0; $j -le 7; $j++) {
+            if ($board[$i, $j] -eq $null) {
+                $board[$i, $j] = $Empty
+            }
+        }
     }
 }
 
 #Used to move pieces on the board
-Function Move-Piece {
+Function New-Move {
     param ([string]$src, [string]$dst)
 
     [bool]$Attack = $false
@@ -492,7 +486,7 @@ Function Move-Piece {
     }
 
     if ($MoveSuccess) {
-        if ($Player1Turn) {
+        if ($Script:Player1Turn) {
             $logstring = [string]($turncounter/2 + 1) + " " + $pc.Symbol
             if ($Attack) {
                 $board[$DesiredColumn, $DesiredRow].Alive = $false
@@ -566,7 +560,8 @@ Function Move-Piece {
             }
         }
         
-        #Get arrays of all piece that are still alive
+        Update-Board
+        <#Get arrays of all piece that are still alive
         [Array] $CurrentWhite = $WhitePieces | Where-Object {$_.Alive -eq $true}
         [Array] $CurrentBlack = $BlackPieces | Where-Object {$_.Alive -eq $true}
     
@@ -586,12 +581,15 @@ Function Move-Piece {
                     $board[$i, $j] = $Empty
                 }
             }
-        }
+        }#>
 
-        if ($Player1Turn) {
+        if ($Script:Player1Turn) {
             $logstring += $dst
             foreach ($pc in $CurrentWhite) {
-                if ($(Test-Validmove $pc.CurrentPosition $bK.CurrentPosition)[0] -eq $true) {
+                if ($pc.CurrentPosition -eq $bK.CurrentPosition) {
+                    $logstring += '#'
+                    break
+                } elseif ($(Test-Move $pc.CurrentPosition $bK.CurrentPosition)[0] -eq $true) {
                     Write-Host 'Check'
                     $logstring += '+'
                     break
@@ -600,7 +598,10 @@ Function Move-Piece {
         } else {
             $logstring2 += $dst
             foreach ($pc in $CurrentBlack) {
-                if ($(Test-Validmove $pc.CurrentPosition $wK.CurrentPosition)[0] -eq $true) {
+                if ($pc.CurrentPosition -eq $wK.CurrentPosition) {
+                    $logstring += '#'
+                    break
+                } elseif ($(Test-Move $pc.CurrentPosition $wK.CurrentPosition)[0] -eq $true) {
                     Write-Host 'Check'
                     $logstring += '+'
                     break
@@ -609,13 +610,12 @@ Function Move-Piece {
             $logentry = $logstring + "`t`t" + $logstring2
             Add-Content -Encoding Unicode $logpath $logentry
         }
-        $Script:turncounter += 1
-        $Player1Turn = (!($Player1Turn))
+        $Script:turnCounter += 1
+        $Script:Player1Turn = (!($Script:Player1Turn))
     }
-    Publish-Board
 }
 
-Function Test-Validmove {
+Function Test-Move {
     param ([string]$src, [string]$dst)
 
     [bool]$Attack = $false
@@ -946,6 +946,16 @@ Function Test-Validmove {
     return $Status
 }
 
+Function Test-Gamestatus {
+    if ($wK.Alive -eq $false) {
+        Write-Output "Black Wins!"
+        $Script:gameStatus = [gamestatus]::blackWin
+    } elseif ($bK.Alive -eq $false) {
+        Write-Output "White Wins!"
+        $Script:gameStatus = [gamestatus]::whiteWin
+    }
+}
+
 Function Get-Column {
     param ([ValidatePattern('[A-H]')][string]$Col)
     switch ($Col) {
@@ -1106,6 +1116,8 @@ Class Blank {
 
 #Creates a turn status
 [bool]$Script:Player1Turn = $true
+
+#SAN log.txt path, currently on desktop
 $DesktopPath = [Environment]::GetFolderPath("Desktop")
 [string]$Script:logpath = $DesktopPath + '\log.txt'
 
@@ -1159,9 +1171,21 @@ $Empty = [Blank]::New()
     $bCB,$bFB,$bQ,$bK
 )
 
+Enum gamestatus {
+    ongoing = 0
+    whiteWin = 1
+    blackWin = 2
+}
+
 #Equivalent of touch command to ensure a log exists
 Write-Output $null >> $logpath
 Clear-Content $logpath
 Add-Content -Encoding Unicode $logpath "  White`t`tBlack`r`n  --------------------"
-[int]$Script:turncounter = 0
-Publish-Board
+[int]$Script:turnCounter = 0
+$Script:gameStatus = [gamestatus]::ongoing
+
+while ($Script:gameStatus -eq [gamestatus]::ongoing) {
+    Update-Board
+    Publish-Board
+    Test-Gamestatus
+}
