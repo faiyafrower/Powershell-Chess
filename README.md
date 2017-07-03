@@ -15,5 +15,7 @@ PowerShell ISE unless you want a challenge.
 
 0.1.4 - Michael Shen - 07-08-2016 - Pawn promotion
 
+0.2.0 - Michael Shen - 07-03-2017 - SAN notation logs
+
 
 Check, checkmate conditions and SAN notation to be implemented
