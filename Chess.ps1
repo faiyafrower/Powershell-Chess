@@ -99,6 +99,7 @@ Function Publish-Board {
     }
 }
 
+#Update the status of all the pieces
 Function Update-Board {
     #Get arrays of all piece that are still alive
     [Array]$CurrentWhite = $WhitePieces | Where-Object {$_.Alive -eq $true}
@@ -487,7 +488,7 @@ Function New-Move {
 
     if ($MoveSuccess) {
         if ($Script:Player1Turn) {
-            $logstring = [string]($turncounter/2 + 1) + " " + $pc.Symbol
+            $logstring = [string]($Script:turnCounter/2 + 1) + " " + $pc.Symbol
             if ($Attack) {
                 $board[$DesiredColumn, $DesiredRow].Alive = $false
                 $board[$DesiredColumn, $DesiredRow].CurrentPosition = $null
@@ -561,27 +562,6 @@ Function New-Move {
         }
         
         Update-Board
-        <#Get arrays of all piece that are still alive
-        [Array] $CurrentWhite = $WhitePieces | Where-Object {$_.Alive -eq $true}
-        [Array] $CurrentBlack = $BlackPieces | Where-Object {$_.Alive -eq $true}
-    
-        #Place all the white pieces
-        foreach ($pc in $CurrentWhite) {
-            $board[($pc.CurrentColumn),($pc.CurrentRow)] = $pc
-        }
-        #Place all the black pieces
-        foreach ($pc in $CurrentBlack) {
-            $board[($pc.CurrentColumn),($pc.CurrentRow)] = $pc
-        }
-
-        #Check for spaces without a piece in them, then fill it with the empty placeholder.
-        for ($i = 0; $i -le 7; $i++) {
-            for ($j = 0; $j -le 7; $j++) {
-                if ($board[$i, $j] -eq $null) {
-                    $board[$i, $j] = $Empty
-                }
-            }
-        }#>
 
         if ($Script:Player1Turn) {
             $logstring += $dst
@@ -611,10 +591,11 @@ Function New-Move {
             Add-Content -Encoding Unicode $logpath $logentry
         }
         $Script:turnCounter += 1
-        $Script:Player1Turn = (!($Script:Player1Turn))
+        $Script:Player1Turn = !($Script:Player1Turn)
     }
 }
 
+#Try a move, used for check and castling logic
 Function Test-Move {
     param ([string]$src, [string]$dst)
 
@@ -946,12 +927,11 @@ Function Test-Move {
     return $Status
 }
 
+#Figure out if the game is over or still ongoing
 Function Test-Gamestatus {
     if ($wK.Alive -eq $false) {
-        Write-Output "Black Wins!"
         $Script:gameStatus = [gamestatus]::blackWin
     } elseif ($bK.Alive -eq $false) {
-        Write-Output "White Wins!"
         $Script:gameStatus = [gamestatus]::whiteWin
     }
 }
@@ -1180,7 +1160,11 @@ Enum gamestatus {
 #Equivalent of touch command to ensure a log exists
 Write-Output $null >> $logpath
 Clear-Content $logpath
+
+#Insert log header
 Add-Content -Encoding Unicode $logpath "  White`t`tBlack`r`n  --------------------"
+
+#Set global variables to keep track of turn and game status
 [int]$Script:turnCounter = 0
 $Script:gameStatus = [gamestatus]::ongoing
 
@@ -1188,4 +1172,10 @@ while ($Script:gameStatus -eq [gamestatus]::ongoing) {
     Update-Board
     Publish-Board
     Test-Gamestatus
+
+    if ($Script:gameStatus -eq [gamestatus]::blackWin) {
+        Write-Output "Black Wins!"
+    } elseif ($Script:gameStatus -eq [gamestatus]::whiteWin) {
+        Write-Output "White Wins!"
+    }
 }
