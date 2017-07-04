@@ -1179,3 +1179,11 @@ while ($Script:gameStatus -eq [gamestatus]::ongoing) {
         Write-Output "White Wins!"
     }
 }
+
+<#Pseudocode
+    Update-Board
+    Publish-Board
+    New-Move
+    Test-Gamestatus
+    Update-Log
+Pseudocode#>
