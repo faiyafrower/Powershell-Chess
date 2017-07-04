@@ -68,29 +68,30 @@ Function Publish-Board {
     Write-Host '   --------------------------------- '
     Write-Host '     A   B   C   D   E   F   G   H'
     
+    #This logic should probably be moved out of Publish-Board
     if ($Script:gameStatus -eq 0) {
         #Ask the player what they would like to move
         if($Script:Player1Turn) {
             Try {
-                [ValidateScript({$_.Length -eq 2})]$src = Read-Host 'White starting square'
+                [ValidateScript({$_.Length -eq 2})]$src = Read-Host 'White piece source'
                 [Int]$cc = Get-Column $src[0]
                 [Int]$cr = Get-Row $src[1]
                 [ValidateScript({$_.Color -eq 'White'})]$pc = $board[$cc, $cr]
-                [ValidateScript({$_.Length -eq 2})]$dst = Read-Host 'White ending square'
+                [ValidateScript({$_.Length -eq 2})]$dst = Read-Host 'White piece destination'
             } Catch {
-                Write-Error "Illegal white move"
+                Write-Error "Illegal input: Not a white piece or valid location"
                 Publish-Board
                 Break
             }
         } else {
             Try {
-                [ValidateScript({$_.Length -eq 2})]$src = Read-Host 'Black starting square'
+                [ValidateScript({$_.Length -eq 2})]$src = Read-Host 'Black piece source'
                 [Int]$cc = Get-Column $src[0]
                 [Int]$cr = Get-Row $src[1]
                 [ValidateScript({$_.Color -eq 'Black'})]$pc = $board[$cc, $cr]
-                [ValidateScript({$_.Length -eq 2})]$dst = Read-Host 'Black ending square'
+                [ValidateScript({$_.Length -eq 2})]$dst = Read-Host 'Black piece destination'
             } Catch {
-                Write-Error "Illegal black move"
+                Write-Error "Illegal input: Not a black piece or valid location"
                 Publish-Board
                 Break
             }
@@ -593,6 +594,11 @@ Function New-Move {
         $Script:turnCounter += 1
         $Script:Player1Turn = !($Script:Player1Turn)
     }
+}
+
+#Log logic will go here
+Function Update-Log {
+
 }
 
 #Try a move, used for check and castling logic
