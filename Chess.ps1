@@ -71,7 +71,7 @@ Function Publish-Board {
     #This logic should probably be moved out of Publish-Board
     if ($Script:gameStatus -eq 0) {
         #Ask the player what they would like to move
-        if($Script:Player1Turn) {
+        if($Script:whiteTurn) {
             Try {
                 [ValidateScript({$_.Length -eq 2})]$src = Read-Host 'White piece source'
                 [Int]$cc = Get-Column $src[0]
@@ -487,8 +487,11 @@ Function New-Move {
         }
     }
 
+    #Start of log code to be moved
     if ($MoveSuccess) {
-        if ($Script:Player1Turn) {
+        Update-Log -src $src -dst $dst -piece $pc.Symbol
+        Update-Board
+        <#if ($Script:whiteTurn) {
             $logstring = [string]($Script:turnCounter/2 + 1) + " " + $pc.Symbol
             if ($Attack) {
                 $board[$DesiredColumn, $DesiredRow].Alive = $false
@@ -564,7 +567,7 @@ Function New-Move {
         
         Update-Board
 
-        if ($Script:Player1Turn) {
+        if ($Script:whiteTurn) {
             $logstring += $dst
             foreach ($pc in $CurrentWhite) {
                 if ($pc.CurrentPosition -eq $bK.CurrentPosition) {
@@ -590,15 +593,22 @@ Function New-Move {
             }
             $logentry = $logstring + "`t`t" + $logstring2
             Add-Content -Encoding Unicode $logpath $logentry
-        }
+        }#>
         $Script:turnCounter += 1
-        $Script:Player1Turn = !($Script:Player1Turn)
+        $Script:whiteTurn = !($Script:whiteTurn)
     }
 }
 
 #Log logic will go here
 Function Update-Log {
+    param([string]$src, [string]$dst, [string]$piece)
+    [string]$logentry = $piece + $dst
 
+    Add-Content -Encoding Unicode $Script:logpath $logentry
+    #Update-Board
+    #Will need the following variables later
+    #$Script:whiteTurn
+    #$Script:logpath
 }
 
 #Try a move, used for check and castling logic
@@ -1101,7 +1111,7 @@ Class Blank {
 [Object]$Script:board = New-Object 'object[,]' 8,8
 
 #Creates a turn status
-[bool]$Script:Player1Turn = $true
+[bool]$Script:whiteTurn = $true
 
 #SAN log.txt path, currently on desktop
 $DesktopPath = [Environment]::GetFolderPath("Desktop")
