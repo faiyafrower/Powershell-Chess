@@ -635,19 +635,17 @@ Function Update-Log {
 
     if ($log.Length -eq 1) {
         Add-Content -Encoding Unicode $Script:logpath $log[0]
-    } elseif ($log.Length % 2 -eq 0) {
-        for ($i = 0; $i -lt $log.Length; $i++) {
-            $line = $Script:log[$i] + "`t`t" + $Script:log[$i + 1]
-            Add-Content -Encoding Unicode $Script:logpath $line
-        }
     } else {
-        for ($i = 0; $i -lt $log.Length - 1; $i++) {
-            $line = $Script:log[$i] + "`t`t" + $Script:log[$i + 1]
+        for ($i = 0; $i -lt $log.Length - 1; $i += 2) {
+            $line = $Script:log[$i] + "`t" + "`t" + "`t" + $Script:log[$i + 1]
             Add-Content -Encoding Unicode $Script:logpath $line
         }
-        #Append the last line
-        Add-Content -Encoding Unicode $Script:logpath $Script:log[$Script:log.Length - 1]
-    }
+        
+        #If game ended in white move, print out the "half-line"
+        if ($log.Length % 2 -eq 1) {
+            Add-Content -Encoding Unicode $Script:logpath $Script:log[$Script:log.Length - 1]
+        }
+    } 
 }
 
 #Try a move, used for check and castling logic
