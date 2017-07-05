@@ -129,8 +129,8 @@ Function Update-Board {
 Function New-Move {
     param ([string]$src, [string]$dst)
 
-    [bool]$Attack = $false
-    [bool]$MoveSuccess = $false
+    [bool]$attack = $false
+    [bool]$moveSuccess = $false
 
     try {
         [Int]$CurrentColumn = Get-Column $src[0]
@@ -166,7 +166,7 @@ Function New-Move {
     [int]$MoveX = $DesiredColumn - $CurrentColumn
     [int]$MoveY = $DesiredRow - $CurrentRow
 
-    #Pieces playable
+    #Move verification logic for each piece
     switch ($pc.GetType().Name) {
         'Pawn' {
             $MoveX = [math]::abs($MoveX)
@@ -179,7 +179,7 @@ Function New-Move {
                 }
                 if (($MoveX -eq 0) -and ($MoveY -eq 1)) {
                     if ($board[$DesiredColumn, $DesiredRow] -eq $Empty) {
-                        $MoveSuccess = $true
+                        $moveSuccess = $true
                         $pc.firstmove = $false
                     } else {
                         Write-Error "Illegal Pawn Move: Blocked Path"
@@ -188,7 +188,7 @@ Function New-Move {
                     if ($pc.firstmove -eq $true) {
                         if ($board[$DesiredColumn, $DesiredRow] -eq $Empty -and `
                             $board[$DesiredColumn, ($DesiredRow + 1)] -eq $Empty) {
-                                $MoveSuccess = $true
+                                $moveSuccess = $true
                                 $pc.firstmove = $false
                                 $pc.inpassing = $turncounter
                         } else {
@@ -204,7 +204,7 @@ Function New-Move {
                             ($pc.Color -ne $enpassant.Color) -and `
                             ($enpassant.inpassing -eq ($turncounter - 1))) {
                             
-                            $MoveSuccess = $true
+                            $moveSuccess = $true
                             $board[$CurrentColumn, $DesiredRow] = $Empty
                             $enpassant.Alive = $false
                             $enpassant.CurrentPosition = $null
@@ -214,8 +214,8 @@ Function New-Move {
                             Write-Error 'Illegal Pawn Move: Cannot en passant'
                         }
                     } else {
-                        $Attack = $true
-                        $MoveSuccess = $true
+                        $attack = $true
+                        $moveSuccess = $true
                         $pc.firstmove = $false
                     }
                 } else {
@@ -229,9 +229,9 @@ Function New-Move {
             $MoveY = [math]::abs($MoveY)
 
             if ((($MoveX -eq 1) -and ($MoveY -eq 2)) -or (($MoveX -eq 2) -and ($MoveY -eq 1))) {
-                $MoveSuccess = $true
+                $moveSuccess = $true
                 if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
-                    $Attack = $true
+                    $attack = $true
                 }
             } else {
                 Write-Error "Illegal Knight Move"
@@ -279,9 +279,9 @@ Function New-Move {
                         }
                     }
                 }
-                $MoveSuccess = $true
+                $moveSuccess = $true
                 if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
-                    $Attack = $true
+                    $attack = $true
                 }
             }
         }
@@ -323,10 +323,10 @@ Function New-Move {
                         }
                     }
                 }
-                $MoveSuccess = $true
+                $moveSuccess = $true
                 $pc.firstmove = $false
                 if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
-                    $Attack = $true
+                    $attack = $true
                 }
             }
         }
@@ -336,9 +336,9 @@ Function New-Move {
             $MoveY = [math]::abs($MoveY)
 
             if (($MoveX -eq 1) -or ($MoveY -eq 1)) {
-                $MoveSuccess = $true
+                $moveSuccess = $true
                 if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
-                    $Attack = $true
+                    $attack = $true
                 }
             } elseif (($pc.firstmove -eq $true) -and `
                       ($pc.color -eq 'White')) {
@@ -352,7 +352,7 @@ Function New-Move {
                     $Crk.CurrentColumn = 5
                     $Crk.firstmove = $false
 
-                    $MoveSuccess = $true
+                    $moveSuccess = $true
                     $pc.firstmove = $false
                 } elseif (($dst -eq 'C1') -and `
                           ($wAR.firstmove -eq $true)) {
@@ -364,7 +364,7 @@ Function New-Move {
                     $Crk.CurrentColumn = 3
                     $Crk.firstmove = $false
 
-                    $MoveSuccess = $true
+                    $moveSuccess = $true
                     $pc.firstmove = $false
                 }
             } elseif (($pc.firstmove -eq $true) -and `
@@ -379,7 +379,7 @@ Function New-Move {
                     $Crk.CurrentColumn = 5
                     $Crk.firstmove = $false
 
-                    $MoveSuccess = $true
+                    $moveSuccess = $true
                     $pc.firstmove = $false
                 } elseif (($dst -eq 'C8') -and `
                           ($bAR.firstmove -eq $true)) {
@@ -391,7 +391,7 @@ Function New-Move {
                     $Crk.CurrentColumn = 3
                     $Crk.firstmove = $false
 
-                    $MoveSuccess = $true
+                    $moveSuccess = $true
                     $pc.firstmove = $false
                 }
             } else {
@@ -438,9 +438,9 @@ Function New-Move {
                         }
                     }
                 }
-                $MoveSuccess = $true
+                $moveSuccess = $true
                 if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
-                    $Attack = $true
+                    $attack = $true
                 }
             } elseif (($MoveX -ne 0 -and $MoveY -eq 0) -or `
                       ($MoveX -eq 0 -and $MoveY -ne 0)) {
@@ -477,9 +477,9 @@ Function New-Move {
                         }
                     }
                 }
-                $MoveSuccess = $true
+                $moveSuccess = $true
                 if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
-                    $Attack = $true
+                    $attack = $true
                 }
             } else {
                 Write-Error "Illegal Queen Move"
@@ -487,37 +487,28 @@ Function New-Move {
         }
     }
 
-    #Start of log code to be moved
-    if ($MoveSuccess) {
-        Update-Log -src $src -dst $dst -piece $pc.Symbol
-        Update-Board
-        <#if ($Script:whiteTurn) {
-            $logstring = [string]($Script:turnCounter/2 + 1) + " " + $pc.Symbol
-            if ($Attack) {
-                $board[$DesiredColumn, $DesiredRow].Alive = $false
-                $board[$DesiredColumn, $DesiredRow].CurrentPosition = $null
-                $board[$DesiredColumn, $DesiredRow].CurrentRow = $null
-                $board[$DesiredColumn, $DesiredRow].CurrentColumn = $null
-
-                $logstring += 'x'
-            }
-        } else {
-            $logstring2 = $pc.Symbol
-            if ($Attack) {
-                $board[$DesiredColumn, $DesiredRow].Alive = $false
-                $board[$DesiredColumn, $DesiredRow].CurrentPosition = $null
-                $board[$DesiredColumn, $DesiredRow].CurrentRow = $null
-                $board[$DesiredColumn, $DesiredRow].CurrentColumn = $null
-
-                $logstring2 += 'x'
-            }
+    if ($moveSuccess) {
+        if ($attack) {
+            $board[$DesiredColumn, $DesiredRow].Alive = $false
+            $board[$DesiredColumn, $DesiredRow].CurrentPosition = $null
+            $board[$DesiredColumn, $DesiredRow].CurrentRow = $null
+            $board[$DesiredColumn, $DesiredRow].CurrentColumn = $null
         }
-        
+
         $board[$CurrentColumn, $CurrentRow] = $Empty
         $pc.CurrentPosition = $dst.ToUpper()
         $pc.CurrentRow = $DesiredRow
         $pc.CurrentColumn = $DesiredColumn
 
+        Update-Log $src $dst $pc.Symbol $attack
+
+        $Script:turnCounter += 1
+        $Script:whiteTurn = !($Script:whiteTurn)
+        
+        #Update-Board
+
+        #Start of log code to be refactored
+        <#
         #Pawn Promotion
         if (($pc.GetType().Name -eq 'Pawn') -and ($DesiredRow -eq 0)) {
             [ValidateSet('Knight', 'Bishop', 'Rook', 'Queen')]$ptype = Read-Host 'Promote black pawn to'
@@ -564,8 +555,6 @@ Function New-Move {
                 }
             }
         }
-        
-        Update-Board
 
         if ($Script:whiteTurn) {
             $logstring += $dst
@@ -594,15 +583,19 @@ Function New-Move {
             $logentry = $logstring + "`t`t" + $logstring2
             Add-Content -Encoding Unicode $logpath $logentry
         }#>
-        $Script:turnCounter += 1
-        $Script:whiteTurn = !($Script:whiteTurn)
     }
 }
 
 #Log logic will go here
 Function Update-Log {
-    param([string]$src, [string]$dst, [string]$piece)
-    [string]$logentry = $piece + $dst
+    param([string]$src, [string]$dst, [string]$piece, [bool]$attack)
+    [string]$logentry = $piece
+
+    if ($attack) {
+        $logentry += 'x'
+    }
+
+    $logentry += $dst
 
     Add-Content -Encoding Unicode $Script:logpath $logentry
     #Update-Board
@@ -615,9 +608,9 @@ Function Update-Log {
 Function Test-Move {
     param ([string]$src, [string]$dst)
 
-    [bool]$Attack = $false
-    [bool]$MoveSuccess = $false
-    [bool[]]$Status = @($MoveSuccess, $Attack)
+    [bool]$attack = $false
+    [bool]$moveSuccess = $false
+    [bool[]]$Status = @($moveSuccess, $attack)
 
     try {
         [Int]$CurrentColumn = Get-Column $src[0]
