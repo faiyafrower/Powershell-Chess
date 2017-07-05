@@ -129,8 +129,16 @@ Function Update-Board {
 Function New-Move {
     param ([string]$src, [string]$dst)
 
+    enum castleOptions {
+        none = 0
+        kingside = 1
+        queenside = 2
+    }
+
     [bool]$attack = $false
     [bool]$moveSuccess = $false
+    [int]$castle = [castleOptions]::none
+    [bool]$promote = $false
 
     try {
         [Int]$CurrentColumn = Get-Column $src[0]
@@ -353,6 +361,7 @@ Function New-Move {
                     $Crk.firstmove = $false
 
                     $moveSuccess = $true
+                    $castle = [castleOptions]::kingside
                     $pc.firstmove = $false
                 } elseif (($dst -eq 'C1') -and `
                           ($wAR.firstmove -eq $true)) {
@@ -365,6 +374,7 @@ Function New-Move {
                     $Crk.firstmove = $false
 
                     $moveSuccess = $true
+                    $castle = [castleOptions]::queenside
                     $pc.firstmove = $false
                 }
             } elseif (($pc.firstmove -eq $true) -and `
@@ -380,6 +390,7 @@ Function New-Move {
                     $Crk.firstmove = $false
 
                     $moveSuccess = $true
+                    $castle = [castleOptions]::kingside
                     $pc.firstmove = $false
                 } elseif (($dst -eq 'C8') -and `
                           ($bAR.firstmove -eq $true)) {
@@ -392,6 +403,7 @@ Function New-Move {
                     $Crk.firstmove = $false
 
                     $moveSuccess = $true
+                    $castle = [castleOptions]::queenside
                     $pc.firstmove = $false
                 }
             } else {
@@ -500,12 +512,11 @@ Function New-Move {
         $pc.CurrentRow = $DesiredRow
         $pc.CurrentColumn = $DesiredColumn
 
-        Update-Log $src $dst $pc.Symbol $attack
-
+        
+        
+        Update-Log $src $dst $pc.Symbol $attack $castle
         $Script:turnCounter += 1
         $Script:whiteTurn = !($Script:whiteTurn)
-        
-        #Update-Board
 
         #Start of log code to be refactored
         <#
@@ -588,14 +599,26 @@ Function New-Move {
 
 #Log logic will go here
 Function Update-Log {
-    param([string]$src, [string]$dst, [string]$piece, [bool]$attack)
-    [string]$logentry = $piece
+    param([string]$src, [string]$dst, [string]$piece, [bool]$attack, [int]$castle)
 
-    if ($attack) {
-        $logentry += 'x'
+    [string]$logentry
+    enum castleOptions {
+        none = 0
+        kingside = 1
+        queenside = 2
     }
 
-    $logentry += $dst
+    if ($castle -eq [castleOptions]::kingside) {
+        $logentry = '0-0'
+    } elseif ($castle -eq [castleOptions]::queenside) {
+        $logentry = '0-0-0'
+    } else {
+        $logentry = $piece
+        if ($attack) {
+            $logentry += 'x'
+        }
+        $logentry += $dst
+    }
 
     Add-Content -Encoding Unicode $Script:logpath $logentry
     #Update-Board
@@ -1160,7 +1183,7 @@ $Empty = [Blank]::New()
     $bCB,$bFB,$bQ,$bK
 )
 
-Enum gamestatus {
+enum gamestatus {
     ongoing = 0
     whiteWin = 1
     blackWin = 2
