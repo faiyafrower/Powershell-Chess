@@ -150,7 +150,6 @@ Function New-Move {
     } catch {
         Write-Error "Out of bounds"
         Publish-Board
-        break
     }
 
     #Moving nothing
@@ -570,7 +569,7 @@ Function New-Move {
         if ($Script:whiteTurn) {
             $logstring += $dst
             foreach ($pc in $CurrentWhite) {
-                if ($pc.CurrentPosition -eq $bK.CurrentPosition) {
+                if ($bK.Alive -eq $false) {
                     $logstring += '#'
                     break
                 } elseif ($(Test-Move $pc.CurrentPosition $bK.CurrentPosition)[0] -eq $true) {
@@ -582,7 +581,7 @@ Function New-Move {
         } else {
             $logstring2 += $dst
             foreach ($pc in $CurrentBlack) {
-                if ($pc.CurrentPosition -eq $wK.CurrentPosition) {
+                if ($wK.Alive -eq $false) {
                     $logstring += '#'
                     break
                 } elseif ($(Test-Move $pc.CurrentPosition $wK.CurrentPosition)[0] -eq $true) {
@@ -601,7 +600,9 @@ Function New-Move {
 Function Update-Log {
     param([string]$src, [string]$dst, [string]$piece, [bool]$attack, [int]$castle)
 
-    [string]$logentry
+    #needs to persist
+    [string]$logentry = ''
+
     enum castleOptions {
         none = 0
         kingside = 1
@@ -620,11 +621,33 @@ Function Update-Log {
         $logentry += $dst
     }
 
-    Add-Content -Encoding Unicode $Script:logpath $logentry
-    #Update-Board
-    #Will need the following variables later
-    #$Script:whiteTurn
-    #$Script:logpath
+    $Script:log += $logentry
+   
+    #Equivalent of touch command to ensure a log exists
+    Write-Output $null >> $Script:logpath
+
+    #Clear and rewrite the log each time
+    Clear-Content $Script:logpath
+    $line = " White`t`tBlack`r`n --------------------"
+
+    #Header
+    Add-Content -Encoding Unicode $Script:logpath $line
+
+    if ($log.Length -eq 1) {
+        Add-Content -Encoding Unicode $Script:logpath $log[0]
+    } elseif ($log.Length % 2 -eq 0) {
+        for ($i = 0; $i -lt $log.Length; $i++) {
+            $line = $Script:log[$i] + "`t`t" + $Script:log[$i + 1]
+            Add-Content -Encoding Unicode $Script:logpath $line
+        }
+    } else {
+        for ($i = 0; $i -lt $log.Length - 1; $i++) {
+            $line = $Script:log[$i] + "`t`t" + $Script:log[$i + 1]
+            Add-Content -Encoding Unicode $Script:logpath $line
+        }
+        #Append the last line
+        Add-Content -Encoding Unicode $Script:logpath $Script:log[$Script:log.Length - 1]
+    }
 }
 
 #Try a move, used for check and castling logic
@@ -1132,55 +1155,56 @@ Class Blank {
 #SAN log.txt path, currently on desktop
 $DesktopPath = [Environment]::GetFolderPath("Desktop")
 [string]$Script:logpath = $DesktopPath + '\log.txt'
+[string[]]$Script:log = @()
 
-$wAP = [Pawn]::New('A2', 'White')
-$wBP = [Pawn]::New('B2', 'White')
-$wCP = [Pawn]::New('C2', 'White')
-$wDP = [Pawn]::New('D2', 'White')
-$wEP = [Pawn]::New('E2', 'White')
-$wFP = [Pawn]::New('F2', 'White')
-$wGP = [Pawn]::New('G2', 'White')
-$wHP = [Pawn]::New('H2', 'White')
-$wAR = [Rook]::New('A1', 'White')
-$wBN = [Knight]::New('B1', 'White')
-$wCB = [Bishop]::New('C1', 'White')
-$wQ  = [Queen]::New('D1', 'White')
-$wK  = [King]::New('E1', 'White')
-$wFB = [Bishop]::New('F1', 'White')
-$wGN = [Knight]::New('G1', 'White')
-$wHR = [Rook]::New('H1', 'White')
+$Script:wAP = [Pawn]::New('A2', 'White')
+$Script:wBP = [Pawn]::New('B2', 'White')
+$Script:wCP = [Pawn]::New('C2', 'White')
+$Script:wDP = [Pawn]::New('D2', 'White')
+$Script:wEP = [Pawn]::New('E2', 'White')
+$Script:wFP = [Pawn]::New('F2', 'White')
+$Script:wGP = [Pawn]::New('G2', 'White')
+$Script:wHP = [Pawn]::New('H2', 'White')
+$Script:wAR = [Rook]::New('A1', 'White')
+$Script:wBN = [Knight]::New('B1', 'White')
+$Script:wCB = [Bishop]::New('C1', 'White')
+$Script:wQ  = [Queen]::New('D1', 'White')
+$Script:wK  = [King]::New('E1', 'White')
+$Script:wFB = [Bishop]::New('F1', 'White')
+$Script:wGN = [Knight]::New('G1', 'White')
+$Script:wHR = [Rook]::New('H1', 'White')
 
-$bAP = [Pawn]::New('A7', 'Black')
-$bBP = [Pawn]::New('B7', 'Black')
-$bCP = [Pawn]::New('C7', 'Black')
-$bDP = [Pawn]::New('D7', 'Black')
-$bEP = [Pawn]::New('E7', 'Black')
-$bFP = [Pawn]::New('F7', 'Black')
-$bGP = [Pawn]::New('G7', 'Black')
-$bHP = [Pawn]::New('H7', 'Black')
-$bAR = [Rook]::New('A8', 'Black')
-$bBN = [Knight]::New('B8', 'Black')
-$bCB = [Bishop]::New('C8', 'Black')
-$bQ  = [Queen]::New('D8', 'Black')
-$bK  = [King]::New('E8', 'Black')
-$bFB = [Bishop]::New('F8', 'Black')
-$bGN = [Knight]::New('G8', 'Black')
-$bHR = [Rook]::New('H8', 'Black')
+$Script:bAP = [Pawn]::New('A7', 'Black')
+$Script:bBP = [Pawn]::New('B7', 'Black')
+$Script:bCP = [Pawn]::New('C7', 'Black')
+$Script:bDP = [Pawn]::New('D7', 'Black')
+$Script:bEP = [Pawn]::New('E7', 'Black')
+$Script:bFP = [Pawn]::New('F7', 'Black')
+$Script:bGP = [Pawn]::New('G7', 'Black')
+$Script:bHP = [Pawn]::New('H7', 'Black')
+$Script:bAR = [Rook]::New('A8', 'Black')
+$Script:bBN = [Knight]::New('B8', 'Black')
+$Script:bCB = [Bishop]::New('C8', 'Black')
+$Script:bQ  = [Queen]::New('D8', 'Black')
+$Script:bK  = [King]::New('E8', 'Black')
+$Script:bFB = [Bishop]::New('F8', 'Black')
+$Script:bGN = [Knight]::New('G8', 'Black')
+$Script:bHR = [Rook]::New('H8', 'Black')
 
-$Empty = [Blank]::New()
+$Script:Empty = [Blank]::New()
 
 [Array] $Script:WhitePieces = @(
-    $wAP,$wBP,$wCP,$wDP,
-    $wEP,$wFP,$wGP,$wHP,
-    $wAR,$wHR,$wBN,$wGN,
-    $wCB,$wFB,$wQ,$wK
+    $Script:wAP,$Script:wBP,$Script:wCP,$Script:wDP,
+    $Script:wEP,$Script:wFP,$Script:wGP,$Script:wHP,
+    $Script:wAR,$Script:wHR,$Script:wBN,$Script:wGN,
+    $Script:wCB,$Script:wFB,$Script:wQ,$Script:wK
 )
 
 [Array] $Script:BlackPieces = @(
-    $bAP,$bBP,$bCP,$bDP,
-    $bEP,$bFP,$bGP,$bHP,
-    $bAR,$bHR,$bBN,$bGN,
-    $bCB,$bFB,$bQ,$bK
+    $Script:bAP,$Script:bBP,$Script:bCP,$Script:bDP,
+    $Script:bEP,$Script:bFP,$Script:bGP,$Script:bHP,
+    $Script:bAR,$Script:bHR,$Script:bBN,$Script:bGN,
+    $Script:bCB,$Script:bFB,$Script:bQ,$Script:bK
 )
 
 enum gamestatus {
@@ -1188,13 +1212,6 @@ enum gamestatus {
     whiteWin = 1
     blackWin = 2
 }
-
-#Equivalent of touch command to ensure a log exists
-Write-Output $null >> $logpath
-Clear-Content $logpath
-
-#Insert log header
-Add-Content -Encoding Unicode $logpath "  White`t`tBlack`r`n  --------------------"
 
 #Set global variables to keep track of turn and game status
 [int]$Script:turnCounter = 0
