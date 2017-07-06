@@ -45,9 +45,9 @@ they only appear when run in PowerShell ISE.
     0.2.0 - Michael Shen - 07-03-2017 - Overhaul into functional state
 #>
 
-#Draws the board to the screen
+#Update-Board must be run before Publish-Board
+#Draws the board to the screen and displays all the icons
 Function Publish-Board {
-    #Draw the board and place pieces
     Write-Host '     A   B   C   D   E   F   G   H'
     Write-Host '   --------------------------------- '
     Write-Host ' 8 |'$board[0,7].Icon'|'$board[1,7].Icon'|'$board[2,7].Icon'|'$board[3,7].Icon'|'$board[4,7].Icon'|'$board[5,7].Icon'|'$board[6,7].Icon'|'$board[7,7].Icon'| 8'
@@ -67,37 +67,36 @@ Function Publish-Board {
     Write-Host ' 1 |'$board[0,0].Icon'|'$board[1,0].Icon'|'$board[2,0].Icon'|'$board[3,0].Icon'|'$board[4,0].Icon'|'$board[5,0].Icon'|'$board[6,0].Icon'|'$board[7,0].Icon'| 1'
     Write-Host '   --------------------------------- '
     Write-Host '     A   B   C   D   E   F   G   H'
-    
-    #This logic should probably be moved out of Publish-Board
-    if ($Script:gameStatus -eq 0) {
-        #Ask the player what they would like to move
-        if($Script:whiteTurn) {
-            Try {
-                [ValidateScript({$_.Length -eq 2})]$src = Read-Host 'White piece source'
-                [Int]$cc = Get-Column $src[0]
-                [Int]$cr = Get-Row $src[1]
-                [ValidateScript({$_.Color -eq 'White'})]$pc = $board[$cc, $cr]
-                [ValidateScript({$_.Length -eq 2})]$dst = Read-Host 'White piece destination'
-            } Catch {
-                Write-Error "Illegal input: Not a white piece or valid location"
-                Publish-Board
-                Break
-            }
-        } else {
-            Try {
-                [ValidateScript({$_.Length -eq 2})]$src = Read-Host 'Black piece source'
-                [Int]$cc = Get-Column $src[0]
-                [Int]$cr = Get-Row $src[1]
-                [ValidateScript({$_.Color -eq 'Black'})]$pc = $board[$cc, $cr]
-                [ValidateScript({$_.Length -eq 2})]$dst = Read-Host 'Black piece destination'
-            } Catch {
-                Write-Error "Illegal input: Not a black piece or valid location"
-                Publish-Board
-                Break
-            }
+}
+
+#Read text input to 
+Function Read-Input {
+    if($Script:whiteTurn) {
+        Try {
+            [ValidateScript({$_.Length -eq 2})]$src = Read-Host 'White piece source'
+            [Int]$cc = Get-Column $src[0]
+            [Int]$cr = Get-Row $src[1]
+            [ValidateScript({$_.Color -eq 'White'})]$pc = $board[$cc, $cr]
+            [ValidateScript({$_.Length -eq 2})]$dst = Read-Host 'White piece destination'
+        } Catch {
+            Write-Error "Illegal input: Not a white piece or valid location"
+            Publish-Board
+            Break
         }
-        New-Move $src $dst
+    } else {
+        Try {
+            [ValidateScript({$_.Length -eq 2})]$src = Read-Host 'Black piece source'
+            [Int]$cc = Get-Column $src[0]
+            [Int]$cr = Get-Row $src[1]
+            [ValidateScript({$_.Color -eq 'Black'})]$pc = $board[$cc, $cr]
+            [ValidateScript({$_.Length -eq 2})]$dst = Read-Host 'Black piece destination'
+        } Catch {
+            Write-Error "Illegal input: Not a black piece or valid location"
+            Publish-Board
+            Break
+        }
     }
+    New-Move $src $dst
 }
 
 #Update the status of all the pieces
@@ -1218,6 +1217,7 @@ $Script:gameStatus = [gamestatus]::ongoing
 while ($Script:gameStatus -eq [gamestatus]::ongoing) {
     Update-Board
     Publish-Board
+    Read-Input
     Test-Gamestatus
 
     if ($Script:gameStatus -eq [gamestatus]::blackWin) {
