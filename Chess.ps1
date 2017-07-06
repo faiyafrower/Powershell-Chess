@@ -72,24 +72,24 @@ Function Publish-Board {
 #Read and clean text input before calling New-Move
 Function Read-Input {
     if($Script:whiteTurn) {
-        Try {
+        try {
             [ValidateScript({$_.Length -eq 2})]$src = Read-Host 'White piece source'
             [Int]$cc = Get-Column $src[0]
             [Int]$cr = Get-Row $src[1]
             [ValidateScript({$_.Color -eq 'White'})]$pc = $board[$cc, $cr]
             [ValidateScript({$_.Length -eq 2})]$dst = Read-Host 'White piece destination'
-        } Catch {
+        } catch {
             Write-Error "Illegal input: Not a white piece or valid location"
             Read-Input
         }
     } else {
-        Try {
+        try {
             [ValidateScript({$_.Length -eq 2})]$src = Read-Host 'Black piece source'
             [Int]$cc = Get-Column $src[0]
             [Int]$cr = Get-Row $src[1]
             [ValidateScript({$_.Color -eq 'Black'})]$pc = $board[$cc, $cr]
             [ValidateScript({$_.Length -eq 2})]$dst = Read-Host 'Black piece destination'
-        } Catch {
+        } catch {
             Write-Error "Illegal input: Not a black piece or valid location"
             Read-Input
         }
@@ -146,376 +146,371 @@ Function New-Move {
         $pc = $board[$CurrentColumn, $CurrentRow]
     } catch {
         Write-Error "Out of bounds"
-        Read-Input
     }
 
-    #Moving nothing
+    #Moving nothing, nowhere, or trying to capture your own piece
     if ($board[$CurrentColumn, $CurrentRow] -eq $Empty) {
         Write-Error "There is nothing there."
         Read-Input
-    }
-    #Moving nowhere
-    if (($CurrentRow -eq $DesiredRow) -and ($CurrentColumn -eq $DesiredColumn)) {
+    } elseif (($CurrentRow -eq $DesiredRow) -and ($CurrentColumn -eq $DesiredColumn)) {
         Write-Error "That wouldn't move anywhere."
         Read-Input
-    }
-    #Moving into another one of your pieces
-    if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
+    } elseif ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
         if ($pc.Color -eq $board[$DesiredColumn, $DesiredRow].Color) {
             Write-Error "Collision with own team"
             Read-Input
         }
-    }
+    } else {
+        [int]$MoveX = $DesiredColumn - $CurrentColumn
+        [int]$MoveY = $DesiredRow - $CurrentRow
 
-    [int]$MoveX = $DesiredColumn - $CurrentColumn
-    [int]$MoveY = $DesiredRow - $CurrentRow
+        #Move verification logic for each piece
+        switch ($pc.GetType().Name) {
+            'Pawn' {
+                $MoveX = [math]::abs($MoveX)
 
-    #Move verification logic for each piece
-    switch ($pc.GetType().Name) {
-        'Pawn' {
-            $MoveX = [math]::abs($MoveX)
+                #Pawns can max move one to the side when capturing, two forward when moving
+                if (($MoveX -gt 1) -or ([math]::abs($MoveY) -gt 2)) {
+                    Write-Error "Illegal Pawn Move: Too many spaces"
+                } else {
+                    #Force pawns to only move "forward"
+                    if ($pc.Color -eq 'Black') {
+                        $MoveY *= -1
+                    }
 
-            #Pawns can max move one to the side when capturing, two forward when moving
-            if (($MoveX -gt 1) -or ([math]::abs($MoveY) -gt 2)) {
-                Write-Error "Illegal Pawn Move: Too many spaces"
-            } else {
-                #Force pawns to only move "forward"
-                if ($pc.Color -eq 'Black') {
-                    $MoveY *= -1
-                }
-
-                if ($MoveX -eq 0) {
-                    if ($board[$DesiredColumn, $DesiredRow] -eq $Empty) {
-                        if ($MoveY -eq 1) {
-                            $moveSuccess = $true
-                            $pc.firstmove = $false
-                        } elseif ($MoveY -eq 2 -and $pc.firstmove -eq $true) {
-                            if ($board[$DesiredColumn, ($DesiredRow + 1)] -eq $Empty) {
+                    if ($MoveX -eq 0) {
+                        if ($board[$DesiredColumn, $DesiredRow] -eq $Empty) {
+                            if ($MoveY -eq 1) {
                                 $moveSuccess = $true
                                 $pc.firstmove = $false
-                                $pc.inpassing = $turncounter
+                            } elseif ($MoveY -eq 2 -and $pc.firstmove -eq $true) {
+                                if ($board[$DesiredColumn, ($DesiredRow + 1)] -eq $Empty) {
+                                    $moveSuccess = $true
+                                    $pc.firstmove = $false
+                                    $pc.inpassing = $turncounter
+                                } else {
+                                    Write-Error "Illegal Pawn Move: Blocked Path"
+                                }
                             } else {
-                                Write-Error "Illegal Pawn Move: Blocked Path"
+                                Write-Error "Illegal Pawn Move: Cannot Move 2 Spaces"
                             }
                         } else {
-                            Write-Error "Illegal Pawn Move: Cannot Move 2 Spaces"
+                            Write-Error "Illegal Pawn Move: Blocked Path"
                         }
-                    } else {
-                        Write-Error "Illegal Pawn Move: Blocked Path"
-                    }
-                } elseif (($MoveX -eq 1) -and ($MoveY -eq 1)) {
-                    if ($board[$DesiredColumn, $DesiredRow] -eq $Empty) {
-                        $enpassant = $board[$CurrentColumn, $DesiredRow]
-                        if (($enpassant.GetType().Name -eq 'Pawn') -and `
-                            ($pc.Color -ne $enpassant.Color) -and `
-                            ($enpassant.inpassing -eq ($turncounter - 1))) {
-                            
-                            $moveSuccess = $true
-                            $board[$CurrentColumn, $DesiredRow] = $Empty
-                            $enpassant.Alive = $false
-                            $enpassant.CurrentPosition = $null
-                            $enpassant.CurrentRow = $null
-                            $enpassant.CurrentColumn = $null
+                    } elseif (($MoveX -eq 1) -and ($MoveY -eq 1)) {
+                        if ($board[$DesiredColumn, $DesiredRow] -eq $Empty) {
+                            $enpassant = $board[$CurrentColumn, $DesiredRow]
+                            if (($enpassant.GetType().Name -eq 'Pawn') -and `
+                                ($pc.Color -ne $enpassant.Color) -and `
+                                ($enpassant.inpassing -eq ($turncounter - 1))) {
+                                
+                                $moveSuccess = $true
+                                $board[$CurrentColumn, $DesiredRow] = $Empty
+                                $enpassant.Alive = $false
+                                $enpassant.CurrentPosition = $null
+                                $enpassant.CurrentRow = $null
+                                $enpassant.CurrentColumn = $null
+                            } else {
+                                Write-Error 'Illegal Pawn Move: Cannot Capture en passant'
+                            }
                         } else {
-                            Write-Error 'Illegal Pawn Move: Cannot Capture en passant'
+                            $attack = $true
+                            $moveSuccess = $true
+                            $pc.firstmove = $false
                         }
                     } else {
+                        #Catch-all, should never get here
+                        Write-Error "Illegal Pawn Move"
+                    }
+                }
+            }
+
+            'Knight' {
+                $MoveX = [math]::abs($MoveX)
+                $MoveY = [math]::abs($MoveY)
+
+                if ((($MoveX -eq 1) -and ($MoveY -eq 2)) -or (($MoveX -eq 2) -and ($MoveY -eq 1))) {
+                    $moveSuccess = $true
+                    if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
                         $attack = $true
+                    }
+                } else {
+                    Write-Error "Illegal Knight Move"
+                }
+            }
+
+            'Bishop' {
+                if ([math]::abs($MoveX) -ne [math]::abs($MoveY)) {
+                    Write-Error "Illegal Bishop Move: Not a Diagonal"
+                } else {
+                    if ($MoveX -gt 0) {
+                        if ($MoveY -gt 0) {
+                            for ($i = 1; $i -lt $MoveX; $i++) {
+                                if ($board[($CurrentColumn + $i) , ($CurrentRow + $i)] -ne $Empty) {
+                                    Write-Error "Illegal Bishop Move: Blocked Path"
+                                    Read-Input
+                                    break
+                                }
+                            }
+                        } else {
+                            for ($i = 1; $i -lt $MoveX; $i++) {
+                                if ($board[($CurrentColumn + $i) , ($CurrentRow - $i)] -ne $Empty) {
+                                    Write-Error "Illegal Bishop Move: Blocked Path"
+                                    Read-Input
+                                    break
+                                }
+                            }
+                        }
+                    } else {
+                        if ($MoveY -gt 0) {
+                            for ($i = 1; $i -lt $MoveY; $i++) {
+                                if ($board[($CurrentColumn - $i) , ($CurrentRow + $i)] -ne $Empty) {
+                                    Write-Error "Illegal Bishop Move: Blocked Path"
+                                    Publish-Board
+                                    break
+                                }
+                            }
+                        } else {
+                            for ($i = 1; $i -lt [math]::abs($MoveX); $i++) {
+                                if ($board[($CurrentColumn - $i) , ($CurrentRow - $i)] -ne $Empty) {
+                                    Write-Error "Illegal Bishop Move: Blocked Path"
+                                    Publish-Board
+                                    break
+                                }
+                            }
+                        }
+                    }
+                    $moveSuccess = $true
+                    if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
+                        $attack = $true
+                    }
+                }
+            }
+
+            'Rook' {
+                if (([math]::abs($MoveX) -gt 0) -and ([math]::abs($MoveY) -gt 0)) {
+                    Write-Error "Illegal Rook Move"
+                } else {
+                    if ($MoveX -gt 0) {
+                        for ($i = 1; $i -lt $MoveX; $i++) {
+                            if ($board[($CurrentColumn + $i), $CurrentRow] -ne $Empty) {
+                                    Write-Error "Illegal Rook Move: Blocked Path"
+                                    Publish-Board
+                                    break
+                            }
+                        }
+                    } elseif ($MoveX -lt 0) {
+                        for ($i = 1; $i -lt [math]::abs($MoveX); $i++) {
+                            if ($board[($CurrentColumn - $i), $CurrentRow] -ne $Empty) {
+                                    Write-Error "Illegal Rook Move: Blocked Path"
+                                    Publish-Board
+                                    break
+                            }
+                        }
+                    } elseif ($MoveY -gt 0) {
+                        for ($i = 1; $i -lt $MoveY; $i++) {
+                            if ($board[$CurrentColumn, ($CurrentRow + $i)] -ne $Empty) {
+                                    Write-Error "Illegal Rook Move: Blocked Path"
+                                    Publish-Board
+                                    break
+                            }
+                        }
+                    } else {
+                        for ($i = 1; $i -lt [math]::abs($MoveY); $i++) {
+                            if ($board[$CurrentColumn, ($CurrentRow - $i)] -ne $Empty) {
+                                    Write-Error "Illegal Rook Move: Blocked Path"
+                                    Publish-Board
+                                    break
+                            }
+                        }
+                    }
+                    $moveSuccess = $true
+                    $pc.firstmove = $false
+                    if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
+                        $attack = $true
+                    }
+                }
+            }
+
+            'King' {
+                $MoveX = [math]::abs($MoveX)
+                $MoveY = [math]::abs($MoveY)
+
+                if (($MoveX -eq 1) -or ($MoveY -eq 1)) {
+                    $moveSuccess = $true
+                    if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
+                        $attack = $true
+                    }
+                } elseif (($pc.firstmove -eq $true) -and `
+                        ($pc.color -eq 'White')) {
+                    if (($dst -eq 'G1') -and `
+                        ($wHR.firstmove -eq $true)) {
+                        
+                        $Crk = $board[7, 0]
+                        $board[7, 0] = $Empty
+                        $Crk.CurrentPosition = 'F1'
+                        $Crk.CurrentRow = 0
+                        $Crk.CurrentColumn = 5
+                        $Crk.firstmove = $false
+
                         $moveSuccess = $true
+                        $castle = [castleOptions]::kingside
+                        $pc.firstmove = $false
+                    } elseif (($dst -eq 'C1') -and `
+                            ($wAR.firstmove -eq $true)) {
+                        
+                        $Crk = $board[0, 0]
+                        $board[0, 0] = $Empty
+                        $Crk.CurrentPosition = 'D1'
+                        $Crk.CurrentRow = 0
+                        $Crk.CurrentColumn = 3
+                        $Crk.firstmove = $false
+
+                        $moveSuccess = $true
+                        $castle = [castleOptions]::queenside
+                        $pc.firstmove = $false
+                    }
+                } elseif (($pc.firstmove -eq $true) -and `
+                        ($pc.color -eq 'Black')) {
+                    if (($dst -eq 'G8') -and `
+                        ($bHR.firstmove -eq $true)) {
+                        
+                        $Crk = $board[7, 7]
+                        $board[7, 7] = $Empty
+                        $Crk.CurrentPosition = 'F8'
+                        $Crk.CurrentRow = 7
+                        $Crk.CurrentColumn = 5
+                        $Crk.firstmove = $false
+
+                        $moveSuccess = $true
+                        $castle = [castleOptions]::kingside
+                        $pc.firstmove = $false
+                    } elseif (($dst -eq 'C8') -and `
+                            ($bAR.firstmove -eq $true)) {
+                        
+                        $Crk = $board[0, 7]
+                        $board[0, 7] = $Empty
+                        $Crk.CurrentPosition = 'D8'
+                        $Crk.CurrentRow = 7
+                        $Crk.CurrentColumn = 3
+                        $Crk.firstmove = $false
+
+                        $moveSuccess = $true
+                        $castle = [castleOptions]::queenside
                         $pc.firstmove = $false
                     }
                 } else {
-                    #Catch-all, should never get here
-                    Write-Error "Illegal Pawn Move"
+                    Write-Error "Illegal King Move"
                 }
             }
-        }
 
-        'Knight' {
-            $MoveX = [math]::abs($MoveX)
-            $MoveY = [math]::abs($MoveY)
-
-            if ((($MoveX -eq 1) -and ($MoveY -eq 2)) -or (($MoveX -eq 2) -and ($MoveY -eq 1))) {
-                $moveSuccess = $true
-                if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
-                    $attack = $true
-                }
-            } else {
-                Write-Error "Illegal Knight Move"
-            }
-        }
-
-        'Bishop' {
-            if ([math]::abs($MoveX) -ne [math]::abs($MoveY)) {
-                Write-Error "Illegal Bishop Move"
-            } else {
-                if ($MoveX -gt 0) {
-                    if ($MoveY -gt 0) {
-                        for ($i = 1; $i -lt $MoveX; $i++) {
-                            if ($board[($CurrentColumn + $i) , ($CurrentRow + $i)] -ne $Empty) {
-                                Write-Error "Illegal Bishop Move: Blocked Path"
-                                Publish-Board
-                                break
+            'Queen' {
+                if ([math]::abs($MoveX) -eq [math]::abs($MoveY)) {
+                    if ($MoveX -gt 0) {
+                        if ($MoveY -gt 0) {
+                            for ($i = 1; $i -lt $MoveX; $i++) {
+                                if ($board[($CurrentColumn + $i) , ($CurrentRow + $i)] -ne $Empty) {
+                                    Write-Error "Illegal Queen Move"
+                                    Publish-Board
+                                    break
+                                }
+                            }
+                        } else {
+                            for ($i = 1; $i -lt $MoveX; $i++) {
+                                if ($board[($CurrentColumn + $i) , ($CurrentRow - $i)] -ne $Empty) {
+                                    Write-Error "Illegal Queen Move"
+                                    Publish-Board
+                                    break
+                                }
                             }
                         }
                     } else {
-                        for ($i = 1; $i -lt $MoveX; $i++) {
-                            if ($board[($CurrentColumn + $i) , ($CurrentRow - $i)] -ne $Empty) {
-                                Write-Error "Illegal Bishop Move: Blocked Path"
-                                Publish-Board
-                                break
+                        if ($MoveY -gt 0) {
+                            for ($i = 1; $i -lt $MoveY; $i++) {
+                                if ($board[($CurrentColumn - $i), ($CurrentRow + $i)] -ne $Empty) {
+                                    Write-Error "Illegal Queen Move"
+                                    Publish-Board
+                                    break
+                                }
+                            }
+                        } else {
+                            for ($i = 1; $i -lt [math]::abs($MoveX); $i++) {
+                                if ($board[($CurrentColumn - $i) , ($CurrentRow - $i)] -ne $Empty) {
+                                    Write-Error "Illegal Queen Move"
+                                    Publish-Board
+                                    break
+                                }
                             }
                         }
                     }
-                } else {
-                    if ($MoveY -gt 0) {
-                        for ($i = 1; $i -lt $MoveY; $i++) {
-                            if ($board[($CurrentColumn - $i) , ($CurrentRow + $i)] -ne $Empty) {
-                                Write-Error "Illegal Bishop Move: Blocked Path"
-                                Publish-Board
-                                break
+                    $moveSuccess = $true
+                    if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
+                        $attack = $true
+                    }
+                } elseif (($MoveX -ne 0 -and $MoveY -eq 0) -or `
+                        ($MoveX -eq 0 -and $MoveY -ne 0)) {
+                    if ($MoveX -gt 0) {
+                        for ($i = 1; $i -lt $MoveX; $i++) {
+                            if ($board[($CurrentColumn + $i), $CurrentRow] -ne $Empty) {
+                                    Write-Error "Illegal Queen Move"
+                                    Publish-Board
+                                    break
                             }
                         }
-                    } else {
+                    } elseif ($MoveX -lt 0) {
                         for ($i = 1; $i -lt [math]::abs($MoveX); $i++) {
-                            if ($board[($CurrentColumn - $i) , ($CurrentRow - $i)] -ne $Empty) {
-                                Write-Error "Illegal Bishop Move: Blocked Path"
-                                Publish-Board
-                                break
+                            if ($board[($CurrentColumn - $i), $CurrentRow] -ne $Empty) {
+                                    Write-Error "Illegal Queen Move"
+                                    Publish-Board
+                                    break
                             }
                         }
-                    }
-                }
-                $moveSuccess = $true
-                if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
-                    $attack = $true
-                }
-            }
-        }
-
-        'Rook' {
-            if (([math]::abs($MoveX) -gt 0) -and ([math]::abs($MoveY) -gt 0)) {
-                Write-Error "Illegal Rook Move"
-            } else {
-                if ($MoveX -gt 0) {
-                    for ($i = 1; $i -lt $MoveX; $i++) {
-                        if ($board[($CurrentColumn + $i), $CurrentRow] -ne $Empty) {
-                                Write-Error "Illegal Rook Move: Blocked Path"
-                                Publish-Board
-                                break
-                        }
-                    }
-                } elseif ($MoveX -lt 0) {
-                    for ($i = 1; $i -lt [math]::abs($MoveX); $i++) {
-                        if ($board[($CurrentColumn - $i), $CurrentRow] -ne $Empty) {
-                                Write-Error "Illegal Rook Move: Blocked Path"
-                                Publish-Board
-                                break
-                        }
-                    }
-                } elseif ($MoveY -gt 0) {
-                    for ($i = 1; $i -lt $MoveY; $i++) {
-                        if ($board[$CurrentColumn, ($CurrentRow + $i)] -ne $Empty) {
-                                Write-Error "Illegal Rook Move: Blocked Path"
-                                Publish-Board
-                                break
-                        }
-                    }
-                } else {
-                    for ($i = 1; $i -lt [math]::abs($MoveY); $i++) {
-                        if ($board[$CurrentColumn, ($CurrentRow - $i)] -ne $Empty) {
-                                Write-Error "Illegal Rook Move: Blocked Path"
-                                Publish-Board
-                                break
-                        }
-                    }
-                }
-                $moveSuccess = $true
-                $pc.firstmove = $false
-                if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
-                    $attack = $true
-                }
-            }
-        }
-
-        'King' {
-            $MoveX = [math]::abs($MoveX)
-            $MoveY = [math]::abs($MoveY)
-
-            if (($MoveX -eq 1) -or ($MoveY -eq 1)) {
-                $moveSuccess = $true
-                if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
-                    $attack = $true
-                }
-            } elseif (($pc.firstmove -eq $true) -and `
-                      ($pc.color -eq 'White')) {
-                if (($dst -eq 'G1') -and `
-                    ($wHR.firstmove -eq $true)) {
-                    
-                    $Crk = $board[7, 0]
-                    $board[7, 0] = $Empty
-                    $Crk.CurrentPosition = 'F1'
-                    $Crk.CurrentRow = 0
-                    $Crk.CurrentColumn = 5
-                    $Crk.firstmove = $false
-
-                    $moveSuccess = $true
-                    $castle = [castleOptions]::kingside
-                    $pc.firstmove = $false
-                } elseif (($dst -eq 'C1') -and `
-                          ($wAR.firstmove -eq $true)) {
-                    
-                    $Crk = $board[0, 0]
-                    $board[0, 0] = $Empty
-                    $Crk.CurrentPosition = 'D1'
-                    $Crk.CurrentRow = 0
-                    $Crk.CurrentColumn = 3
-                    $Crk.firstmove = $false
-
-                    $moveSuccess = $true
-                    $castle = [castleOptions]::queenside
-                    $pc.firstmove = $false
-                }
-            } elseif (($pc.firstmove -eq $true) -and `
-                      ($pc.color -eq 'Black')) {
-                if (($dst -eq 'G8') -and `
-                    ($bHR.firstmove -eq $true)) {
-                    
-                    $Crk = $board[7, 7]
-                    $board[7, 7] = $Empty
-                    $Crk.CurrentPosition = 'F8'
-                    $Crk.CurrentRow = 7
-                    $Crk.CurrentColumn = 5
-                    $Crk.firstmove = $false
-
-                    $moveSuccess = $true
-                    $castle = [castleOptions]::kingside
-                    $pc.firstmove = $false
-                } elseif (($dst -eq 'C8') -and `
-                          ($bAR.firstmove -eq $true)) {
-                    
-                    $Crk = $board[0, 7]
-                    $board[0, 7] = $Empty
-                    $Crk.CurrentPosition = 'D8'
-                    $Crk.CurrentRow = 7
-                    $Crk.CurrentColumn = 3
-                    $Crk.firstmove = $false
-
-                    $moveSuccess = $true
-                    $castle = [castleOptions]::queenside
-                    $pc.firstmove = $false
-                }
-            } else {
-                Write-Error "Illegal King Move"
-            }
-        }
-
-        'Queen' {
-            if ([math]::abs($MoveX) -eq [math]::abs($MoveY)) {
-                if ($MoveX -gt 0) {
-                    if ($MoveY -gt 0) {
-                        for ($i = 1; $i -lt $MoveX; $i++) {
-                            if ($board[($CurrentColumn + $i) , ($CurrentRow + $i)] -ne $Empty) {
-                                Write-Error "Illegal Queen Move"
-                                Publish-Board
-                                break
-                            }
-                        }
-                    } else {
-                        for ($i = 1; $i -lt $MoveX; $i++) {
-                            if ($board[($CurrentColumn + $i) , ($CurrentRow - $i)] -ne $Empty) {
-                                Write-Error "Illegal Queen Move"
-                                Publish-Board
-                                break
-                            }
-                        }
-                    }
-                } else {
-                    if ($MoveY -gt 0) {
+                    } elseif ($MoveY -gt 0) {
                         for ($i = 1; $i -lt $MoveY; $i++) {
-                            if ($board[($CurrentColumn - $i), ($CurrentRow + $i)] -ne $Empty) {
-                                Write-Error "Illegal Queen Move"
-                                Publish-Board
-                                break
+                            if ($board[$CurrentColumn, ($CurrentRow + $i)] -ne $Empty) {
+                                    Write-Error "Illegal Queen Move"
+                                    Publish-Board
+                                    break
                             }
                         }
                     } else {
-                        for ($i = 1; $i -lt [math]::abs($MoveX); $i++) {
-                            if ($board[($CurrentColumn - $i) , ($CurrentRow - $i)] -ne $Empty) {
-                                Write-Error "Illegal Queen Move"
-                                Publish-Board
-                                break
+                        for ($i = 1; $i -lt [math]::abs($MoveY); $i++) {
+                            if ($board[$CurrentColumn, ($CurrentRow - $i)] -ne $Empty) {
+                                    Write-Error "Illegal Queen Move"
+                                    Publish-Board
+                                    break
                             }
                         }
                     }
-                }
-                $moveSuccess = $true
-                if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
-                    $attack = $true
-                }
-            } elseif (($MoveX -ne 0 -and $MoveY -eq 0) -or `
-                      ($MoveX -eq 0 -and $MoveY -ne 0)) {
-                if ($MoveX -gt 0) {
-                    for ($i = 1; $i -lt $MoveX; $i++) {
-                        if ($board[($CurrentColumn + $i), $CurrentRow] -ne $Empty) {
-                                Write-Error "Illegal Queen Move"
-                                Publish-Board
-                                break
-                        }
-                    }
-                } elseif ($MoveX -lt 0) {
-                    for ($i = 1; $i -lt [math]::abs($MoveX); $i++) {
-                        if ($board[($CurrentColumn - $i), $CurrentRow] -ne $Empty) {
-                                Write-Error "Illegal Queen Move"
-                                Publish-Board
-                                break
-                        }
-                    }
-                } elseif ($MoveY -gt 0) {
-                    for ($i = 1; $i -lt $MoveY; $i++) {
-                        if ($board[$CurrentColumn, ($CurrentRow + $i)] -ne $Empty) {
-                                Write-Error "Illegal Queen Move"
-                                Publish-Board
-                                break
-                        }
+                    $moveSuccess = $true
+                    if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
+                        $attack = $true
                     }
                 } else {
-                    for ($i = 1; $i -lt [math]::abs($MoveY); $i++) {
-                        if ($board[$CurrentColumn, ($CurrentRow - $i)] -ne $Empty) {
-                                Write-Error "Illegal Queen Move"
-                                Publish-Board
-                                break
-                        }
-                    }
+                    Write-Error "Illegal Queen Move"
                 }
-                $moveSuccess = $true
-                if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
-                    $attack = $true
-                }
-            } else {
-                Write-Error "Illegal Queen Move"
             }
         }
-    }
 
-    if ($moveSuccess) {
-        if ($attack) {
-            $board[$DesiredColumn, $DesiredRow].Alive = $false
-            $board[$DesiredColumn, $DesiredRow].CurrentPosition = $null
-            $board[$DesiredColumn, $DesiredRow].CurrentRow = $null
-            $board[$DesiredColumn, $DesiredRow].CurrentColumn = $null
+        if ($moveSuccess -eq $true) {
+            if ($attack -eq $true) {
+                $board[$DesiredColumn, $DesiredRow].Alive = $false
+                $board[$DesiredColumn, $DesiredRow].CurrentPosition = $null
+                $board[$DesiredColumn, $DesiredRow].CurrentRow = $null
+                $board[$DesiredColumn, $DesiredRow].CurrentColumn = $null
+            }
+            
+            $board[$CurrentColumn, $CurrentRow] = $Empty
+            $pc.CurrentPosition = $dst.ToUpper()
+            $pc.CurrentRow = $DesiredRow
+            $pc.CurrentColumn = $DesiredColumn
+
+            Update-Log $src $dst $pc.Symbol $attack $castle
+            $Script:turnCounter += 1
+            $Script:whiteTurn = !($Script:whiteTurn)
+        } else {
+            Read-Input
         }
-        
-        $board[$CurrentColumn, $CurrentRow] = $Empty
-        $pc.CurrentPosition = $dst.ToUpper()
-        $pc.CurrentRow = $DesiredRow
-        $pc.CurrentColumn = $DesiredColumn
-
-        Update-Log $src $dst $pc.Symbol $attack $castle
-        $Script:turnCounter += 1
-        $Script:whiteTurn = !($Script:whiteTurn)
-    } else {
-        Read-Input
     }
 }
         #Start of log code to be refactored
