@@ -69,7 +69,7 @@ Function Publish-Board {
     Write-Host '     A   B   C   D   E   F   G   H'
 }
 
-#Read text input to 
+#Read and clean text input before calling New-Move
 Function Read-Input {
     if($Script:whiteTurn) {
         Try {
@@ -80,8 +80,7 @@ Function Read-Input {
             [ValidateScript({$_.Length -eq 2})]$dst = Read-Host 'White piece destination'
         } Catch {
             Write-Error "Illegal input: Not a white piece or valid location"
-            Publish-Board
-            Break
+            Read-Input
         }
     } else {
         Try {
@@ -92,8 +91,7 @@ Function Read-Input {
             [ValidateScript({$_.Length -eq 2})]$dst = Read-Host 'Black piece destination'
         } Catch {
             Write-Error "Illegal input: Not a black piece or valid location"
-            Publish-Board
-            Break
+            Read-Input
         }
     }
     New-Move $src $dst
@@ -148,24 +146,24 @@ Function New-Move {
         $pc = $board[$CurrentColumn, $CurrentRow]
     } catch {
         Write-Error "Out of bounds"
-        Publish-Board
+        Read-Input
     }
 
     #Moving nothing
     if ($board[$CurrentColumn, $CurrentRow] -eq $Empty) {
         Write-Error "There is nothing there."
-        Publish-Board
+        Read-Input
     }
     #Moving nowhere
     if (($CurrentRow -eq $DesiredRow) -and ($CurrentColumn -eq $DesiredColumn)) {
         Write-Error "That wouldn't move anywhere."
-        Publish-Board
+        Read-Input
     }
     #Moving into another one of your pieces
     if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
         if ($pc.Color -eq $board[$DesiredColumn, $DesiredRow].Color) {
             Write-Error "Collision with own team"
-            Publish-Board
+            Read-Input
         }
     }
 
@@ -176,32 +174,34 @@ Function New-Move {
     switch ($pc.GetType().Name) {
         'Pawn' {
             $MoveX = [math]::abs($MoveX)
+
+            #Pawns can max move one to the side when capturing, two forward when moving
             if (($MoveX -gt 1) -or ([math]::abs($MoveY) -gt 2)) {
-                Write-Error "Illegal Pawn Move"
+                Write-Error "Illegal Pawn Move: Too many spaces"
             } else {
                 #Force pawns to only move "forward"
                 if ($pc.Color -eq 'Black') {
                     $MoveY *= -1
                 }
-                if (($MoveX -eq 0) -and ($MoveY -eq 1)) {
+
+                if ($MoveX -eq 0) {
                     if ($board[$DesiredColumn, $DesiredRow] -eq $Empty) {
-                        $moveSuccess = $true
-                        $pc.firstmove = $false
-                    } else {
-                        Write-Error "Illegal Pawn Move: Blocked Path"
-                    }
-                } elseif (($MoveX -eq 0) -and ($MoveY -eq 2)) {
-                    if ($pc.firstmove -eq $true) {
-                        if ($board[$DesiredColumn, $DesiredRow] -eq $Empty -and `
-                            $board[$DesiredColumn, ($DesiredRow + 1)] -eq $Empty) {
+                        if ($MoveY -eq 1) {
+                            $moveSuccess = $true
+                            $pc.firstmove = $false
+                        } elseif ($MoveY -eq 2 -and $pc.firstmove -eq $true) {
+                            if ($board[$DesiredColumn, ($DesiredRow + 1)] -eq $Empty) {
                                 $moveSuccess = $true
                                 $pc.firstmove = $false
                                 $pc.inpassing = $turncounter
+                            } else {
+                                Write-Error "Illegal Pawn Move: Blocked Path"
+                            }
                         } else {
-                            Write-Error "Illegal Pawn Move: Blocked Path"
+                            Write-Error "Illegal Pawn Move: Cannot Move 2 Spaces"
                         }
                     } else {
-                        Write-Error "Illegal Pawn Move: Cannot Move 2 Spaces"
+                        Write-Error "Illegal Pawn Move: Blocked Path"
                     }
                 } elseif (($MoveX -eq 1) -and ($MoveY -eq 1)) {
                     if ($board[$DesiredColumn, $DesiredRow] -eq $Empty) {
@@ -217,7 +217,7 @@ Function New-Move {
                             $enpassant.CurrentRow = $null
                             $enpassant.CurrentColumn = $null
                         } else {
-                            Write-Error 'Illegal Pawn Move: Cannot en passant'
+                            Write-Error 'Illegal Pawn Move: Cannot Capture en passant'
                         }
                     } else {
                         $attack = $true
@@ -225,6 +225,7 @@ Function New-Move {
                         $pc.firstmove = $false
                     }
                 } else {
+                    #Catch-all, should never get here
                     Write-Error "Illegal Pawn Move"
                 }
             }
@@ -504,18 +505,19 @@ Function New-Move {
             $board[$DesiredColumn, $DesiredRow].CurrentRow = $null
             $board[$DesiredColumn, $DesiredRow].CurrentColumn = $null
         }
-
+        
         $board[$CurrentColumn, $CurrentRow] = $Empty
         $pc.CurrentPosition = $dst.ToUpper()
         $pc.CurrentRow = $DesiredRow
         $pc.CurrentColumn = $DesiredColumn
 
-        
-        
         Update-Log $src $dst $pc.Symbol $attack $castle
         $Script:turnCounter += 1
         $Script:whiteTurn = !($Script:whiteTurn)
-
+    } else {
+        Read-Input
+    }
+}
         #Start of log code to be refactored
         <#
         #Pawn Promotion
@@ -592,8 +594,6 @@ Function New-Move {
             $logentry = $logstring + "`t`t" + $logstring2
             Add-Content -Encoding Unicode $logpath $logentry
         }#>
-    }
-}
 
 #Log logic will go here
 Function Update-Log {
