@@ -150,6 +150,7 @@ Function New-Move {
         $pc = $board[$CurrentColumn, $CurrentRow]
     } catch {
         Write-Error "Out of bounds"
+        Read-Input
     }
 
     #Moving nothing, nowhere, or trying to capture your own piece
@@ -503,6 +504,53 @@ Function New-Move {
                 $board[$DesiredColumn, $DesiredRow].CurrentRow = $null
                 $board[$DesiredColumn, $DesiredRow].CurrentColumn = $null
             }
+
+            #Pawn Promotion
+            if (($pc.GetType().Name -eq 'Pawn') -and ($DesiredRow -eq 0)) {
+                [ValidateSet('Knight', 'Bishop', 'Rook', 'Queen')]$ptype = Read-Host 'Promote black pawn to'
+                
+                $pc.Type = $ptype
+                switch ($ptype) {
+                    'Knight' {
+                        $pc.Icon = '♞'
+                        $pc.Symbol = 'N'
+                    }
+                    'Bishop' {
+                        $pc.Icon = '♝'
+                        $pc.Symbol = 'B'
+                    }
+                    'Rook' {
+                        $pc.Icon = '♜'
+                        $pc.Symbol = 'R'
+                    }
+                    'Queen' {
+                        $pc.Icon = '♛'
+                        $pc.Symbol = 'Q'
+                    }
+                }
+            } elseif (($pc.GetType().Name -eq 'Pawn') -and ($DesiredRow -eq 7)) {
+                [ValidateSet('Knight', 'Bishop', 'Rook', 'Queen')]$ptype = Read-Host 'Promote white pawn to'
+                
+                $pc.Type = $ptype
+                switch ($ptype) {
+                    'Knight' {
+                        $pc.Icon = '♘'
+                        $pc.Symbol = 'N'
+                    }
+                    'Bishop' {
+                        $pc.Icon = '♗'
+                        $pc.Symbol = 'B'
+                    }
+                    'Rook' {
+                        $pc.Icon = '♖'
+                        $pc.Symbol = 'R'
+                    }
+                    'Queen' {
+                        $pc.Icon = '♕'
+                        $pc.Symbol = 'Q'
+                    }
+                }
+            }
             
             $board[$CurrentColumn, $CurrentRow] = $Empty
             $pc.CurrentPosition = $dst.ToUpper()
@@ -517,54 +565,8 @@ Function New-Move {
         }
     }
 }
-        #Start of log code to be refactored
         <#
-        #Pawn Promotion
-        if (($pc.GetType().Name -eq 'Pawn') -and ($DesiredRow -eq 0)) {
-            [ValidateSet('Knight', 'Bishop', 'Rook', 'Queen')]$ptype = Read-Host 'Promote black pawn to'
-            
-            $pc.Type = $ptype
-            switch ($ptype) {
-                'Knight' {
-                    $pc.Icon = '♞'
-                    $pc.Symbol = 'N'
-                }
-                'Bishop' {
-                    $pc.Icon = '♝'
-                    $pc.Symbol = 'B'
-                }
-                'Rook' {
-                    $pc.Icon = '♜'
-                    $pc.Symbol = 'R'
-                }
-                'Queen' {
-                    $pc.Icon = '♛'
-                    $pc.Symbol = 'Q'
-                }
-            }
-        } elseif (($pc.GetType().Name -eq 'Pawn') -and ($DesiredRow -eq 7)) {
-            [ValidateSet('Knight', 'Bishop', 'Rook', 'Queen')]$ptype = Read-Host 'Promote white pawn to'
-            
-            $pc.Type = $ptype
-            switch ($ptype) {
-                'Knight' {
-                    $pc.Icon = '♘'
-                    $pc.Symbol = 'N'
-                }
-                'Bishop' {
-                    $pc.Icon = '♗'
-                    $pc.Symbol = 'B'
-                }
-                'Rook' {
-                    $pc.Icon = '♖'
-                    $pc.Symbol = 'R'
-                }
-                'Queen' {
-                    $pc.Icon = '♕'
-                    $pc.Symbol = 'Q'
-                }
-            }
-        }#>
+        #>
 
 #Log logic will go here
 Function Update-Log {
