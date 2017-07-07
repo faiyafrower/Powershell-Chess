@@ -100,8 +100,8 @@ Function Read-Input {
 #Update the status of all the pieces
 Function Update-Board {
     #Get arrays of all piece that are still alive
-    [Array]$CurrentWhite = $WhitePieces | Where-Object {$_.Alive -eq $true}
-    [Array]$CurrentBlack = $BlackPieces | Where-Object {$_.Alive -eq $true}
+    [Array]$CurrentWhite = $Script:WhitePieces | Where-Object {$_.Alive -eq $true}
+    [Array]$CurrentBlack = $Script:BlackPieces | Where-Object {$_.Alive -eq $true}
 
     #Place all the white pieces
     foreach ($pc in $CurrentWhite) {
@@ -126,6 +126,9 @@ Function Update-Board {
 Function New-Move {
     param ([string]$src, [string]$dst)
 
+
+    #[Array]$CurrentWhite = $Script:WhitePieces | Where-Object {$_.Alive -eq $true}
+    #[Array]$CurrentBlack = $Script:BlackPieces | Where-Object {$_.Alive -eq $true}
     enum castleOptions {
         none = 0
         kingside = 1
@@ -136,6 +139,7 @@ Function New-Move {
     [bool]$moveSuccess = $false
     [int]$castle = [castleOptions]::none
     [bool]$promote = $false
+    [bool]$check = $false
 
     try {
         [Int]$CurrentColumn = Get-Column $src[0]
@@ -560,41 +564,12 @@ Function New-Move {
                     $pc.Symbol = 'Q'
                 }
             }
-        }
-
-        if ($Script:whiteTurn) {
-            $logstring += $dst
-            foreach ($pc in $CurrentWhite) {
-                if ($bK.Alive -eq $false) {
-                    $logstring += '#'
-                    break
-                } elseif ($(Test-Move $pc.CurrentPosition $bK.CurrentPosition)[0] -eq $true) {
-                    Write-Host 'Check'
-                    $logstring += '+'
-                    break
-                }
-            }
-        } else {
-            $logstring2 += $dst
-            foreach ($pc in $CurrentBlack) {
-                if ($wK.Alive -eq $false) {
-                    $logstring += '#'
-                    break
-                } elseif ($(Test-Move $pc.CurrentPosition $wK.CurrentPosition)[0] -eq $true) {
-                    Write-Host 'Check'
-                    $logstring += '+'
-                    break
-                }
-            }
-            $logentry = $logstring + "`t`t" + $logstring2
-            Add-Content -Encoding Unicode $logpath $logentry
         }#>
 
 #Log logic will go here
 Function Update-Log {
     param([string]$src, [string]$dst, [string]$piece, [bool]$attack, [int]$castle)
 
-    #needs to persist
     [string]$logentry = ''
 
     enum castleOptions {
@@ -648,7 +623,7 @@ Function Test-Move {
 
     [bool]$attack = $false
     [bool]$moveSuccess = $false
-    [bool[]]$Status = @($moveSuccess, $attack)
+    [bool[]]$status = @($moveSuccess, $attack)
 
     try {
         [Int]$CurrentColumn = Get-Column $src[0]
@@ -659,319 +634,314 @@ Function Test-Move {
         $pc = $board[$CurrentColumn, $CurrentRow]
     } catch {
         Write-Error "Out of bounds"
-        Publish-Board
-        break
+        return $status
     }
 
-    #Moving nothing
+    #Moving nothing, nowhere, or trying to capture your own piece
     if ($board[$CurrentColumn, $CurrentRow] -eq $Empty) {
         Write-Error "There is nothing there."
-        Publish-Board
-    }
-    #Moving nowhere
-    if (($CurrentRow -eq $DesiredRow) -and ($CurrentColumn -eq $DesiredColumn)) {
+        return $status
+    } elseif (($CurrentRow -eq $DesiredRow) -and ($CurrentColumn -eq $DesiredColumn)) {
         Write-Error "That wouldn't move anywhere."
-        Publish-Board
-    }
-    #Moving into another one of your pieces
-    if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
+        return $status
+    } elseif ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
         if ($pc.Color -eq $board[$DesiredColumn, $DesiredRow].Color) {
             Write-Error "Collision with own team"
-            Publish-Board
+            return $status
         }
-    }
-
-    [int]$MoveX = $DesiredColumn - $CurrentColumn
-    [int]$MoveY = $DesiredRow - $CurrentRow
-    
-    #Pieces playable
-    switch ($pc.Type) {
-        'Pawn' {
-            $MoveX = [math]::abs($MoveX)
-            if (($MoveX -gt 1) -or ([math]::abs($MoveY) -gt 2)) {
-                return $Status
-            } else {
-                #Force pawns to only move "forward"
-                if ($pc.Color -eq 'Black') {
-                    $MoveY *= -1
-                }
-                if (($MoveX -eq 0) -and ($MoveY -eq 1)) {
-                    if ($board[$DesiredColumn,$DesiredRow] -ne $Empty) {
-                        return $Status
-                    } else {
-                        $Status[0] = $true
-                        $pc.firstmove = $false
+    } else {
+        [int]$MoveX = $DesiredColumn - $CurrentColumn
+        [int]$MoveY = $DesiredRow - $CurrentRow
+        
+        #Pieces playable
+        switch ($pc.Type) {
+            'Pawn' {
+                $MoveX = [math]::abs($MoveX)
+                if (($MoveX -gt 1) -or ([math]::abs($MoveY) -gt 2)) {
+                    return $status
+                } else {
+                    #Force pawns to only move "forward"
+                    if ($pc.Color -eq 'Black') {
+                        $MoveY *= -1
                     }
-                } elseif (($MoveX -eq 0) -and ($MoveY -eq 2)) {
-                    if (($pc.firstmove = $true) -and `
-                        (($board[$DesiredColumn, $DesiredRow] -eq $Empty) -and `
-                        ($board[($DesiredColumn + 1), $DesiredRow] -eq $Empty))) {
-
-                        $Status[0] = $true
-                        $pc.firstmove = $false
-                        $pc.inpassing = $turncounter
-                    } else {
-                        return $Status
-                    }
-                } elseif (($MoveX -eq 1) -and ($MoveY -eq 1)) {
-                    if ($board[$DesiredColumn,$DesiredRow] -eq $Empty) {
-                        $enpassant = $board[$CurrentColumn, $DesiredRow]
-                        if (($enpassant.GetType().Name -eq 'Pawn') -and `
-                            ($pc.Color -ne $enpassant.Color) -and `
-                            ($enpassant.inpassing -eq ($turncounter - 1))) {
-                            
-                            $Status[0] = $true
-                            $board[$CurrentColumn, $DesiredRow] = $Empty
-                            $enpassant.Alive = $false
-                            $enpassant.CurrentPosition = $null
-                            $enpassant.CurrentRow = $null
-                            $enpassant.CurrentColumn = $null
+                    if (($MoveX -eq 0) -and ($MoveY -eq 1)) {
+                        if ($board[$DesiredColumn,$DesiredRow] -ne $Empty) {
+                            return $status
                         } else {
-                            return $Status
+                            $status[0] = $true
+                            $pc.firstmove = $false
+                        }
+                    } elseif (($MoveX -eq 0) -and ($MoveY -eq 2)) {
+                        if (($pc.firstmove = $true) -and `
+                            (($board[$DesiredColumn, $DesiredRow] -eq $Empty) -and `
+                            ($board[($DesiredColumn + 1), $DesiredRow] -eq $Empty))) {
+
+                            $status[0] = $true
+                            $pc.firstmove = $false
+                            $pc.inpassing = $turncounter
+                        } else {
+                            return $status
+                        }
+                    } elseif (($MoveX -eq 1) -and ($MoveY -eq 1)) {
+                        if ($board[$DesiredColumn,$DesiredRow] -eq $Empty) {
+                            $enpassant = $board[$CurrentColumn, $DesiredRow]
+                            if (($enpassant.GetType().Name -eq 'Pawn') -and `
+                                ($pc.Color -ne $enpassant.Color) -and `
+                                ($enpassant.inpassing -eq ($turncounter - 1))) {
+                                
+                                $status[0] = $true
+                                $board[$CurrentColumn, $DesiredRow] = $Empty
+                                $enpassant.Alive = $false
+                                $enpassant.CurrentPosition = $null
+                                $enpassant.CurrentRow = $null
+                                $enpassant.CurrentColumn = $null
+                            } else {
+                                return $status
+                            }
+                        } else {
+                            $status[1] = $true
+                            $status[0] = $true
+                            $pc.firstmove = $false
                         }
                     } else {
-                        $Status[1] = $true
-                        $Status[0] = $true
+                        return $status
+                    }
+                }
+            }
+
+            'Knight' {
+                $MoveX = [math]::abs($MoveX)
+                $MoveY = [math]::abs($MoveY)
+
+                if ((($MoveX -eq 1) -and ($MoveY -eq 2)) -or (($MoveX -eq 2) -and ($MoveY -eq 1))) {
+                    $status[0] = $true
+                    if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
+                        $status[1] = $true
+                    }
+                } else {
+                    return $status
+                }
+            }
+
+            'Bishop' {
+                if ([math]::abs($MoveX) -ne [math]::abs($MoveY)) {
+                    return $status
+                } else {
+                    if ($MoveX -gt 0) {
+                        if ($MoveY -gt 0) {
+                            for ($i = 1; $i -lt $MoveX; $i++) {
+                                if ($board[($CurrentColumn + $i) , ($CurrentRow + $i)] -ne $Empty) {
+                                    return $status
+                                }
+                            }
+                        } else {
+                            for ($i = 1; $i -lt $MoveX; $i++) {
+                                if ($board[($CurrentColumn + $i) , ($CurrentRow - $i)] -ne $Empty) {
+                                    return $status
+                                }
+                            }
+                        }
+                    } else {
+                        if ($MoveY -gt 0) {
+                            for ($i = 1; $i -lt $MoveY; $i++) {
+                                if ($board[($CurrentColumn - $i) , ($CurrentRow + $i)] -ne $Empty) {
+                                    return $status
+                                }
+                            }
+                        } else {
+                            for ($i = 1; $i -lt [math]::abs($MoveX); $i++) {
+                                if ($board[($CurrentColumn - $i) , ($CurrentRow - $i)] -ne $Empty) {
+                                    return $status
+                                }
+                            }
+                        }
+                    }
+                    $status[0] = $true
+                    if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
+                        $status[1] = $true
+                    }
+                }
+            }
+
+            'Rook' {
+                if (([math]::abs($MoveX) -gt 0) -and ([math]::abs($MoveY) -gt 0)) {
+                    return $status
+                } else {
+                    if ($MoveX -gt 0) {
+                        for ($i = 1; $i -lt $MoveX; $i++) {
+                            if ($board[($CurrentColumn + $i), $CurrentRow] -ne $Empty) {
+                                return $status
+                            }
+                        }
+                    } elseif ($MoveX -lt 0) {
+                        for ($i = 1; $i -lt [math]::abs($MoveX); $i++) {
+                            if ($board[($CurrentColumn - $i), $CurrentRow] -ne $Empty) {
+                                return $status
+                            }
+                        }
+                    } elseif ($MoveY -gt 0) {
+                        for ($i = 1; $i -lt $MoveY; $i++) {
+                            if ($board[$CurrentColumn, ($CurrentRow + $i)] -ne $Empty) {
+                                return $status
+                            }
+                        }
+                    } else {
+                        for ($i = 1; $i -lt [math]::abs($MoveY); $i++) {
+                            if ($board[$CurrentColumn, ($CurrentRow - $i)] -ne $Empty) {
+                                return $status
+                            }
+                        }
+                    }
+                    $status[0] = $true
+                    $pc.firstmove = $false
+                    if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
+                        $status[1] = $true
+                    }
+                }
+            }
+
+            'Queen' {
+                if ([math]::abs($MoveX) -eq [math]::abs($MoveY)) {
+                    if ($MoveX -gt 0) {
+                        if ($MoveY -gt 0) {
+                            for ($i = 1; $i -lt $MoveX; $i++) {
+                                if ($board[($CurrentColumn + $i) , ($CurrentRow + $i)] -ne $Empty) {
+                                    return $status
+                                }
+                            }
+                        } else {
+                            for ($i = 1; $i -lt $MoveX; $i++) {
+                                if ($board[($CurrentColumn + $i) , ($CurrentRow - $i)] -ne $Empty) {
+                                    return $status
+                                }
+                            }
+                        }
+                    } else {
+                        if ($MoveY -gt 0) {
+                            for ($i = 1; $i -lt $MoveY; $i++) {
+                                if ($board[($CurrentColumn - $i), ($CurrentRow + $i)] -ne $Empty) {
+                                    return $status
+                                }
+                            }
+                        } else {
+                            for ($i = 1; $i -lt [math]::abs($MoveX); $i++) {
+                                if ($board[($CurrentColumn - $i) , ($CurrentRow - $i)] -ne $Empty) {
+                                    return $status
+                                }
+                            }
+                        }
+                    }
+                    $status[0] = $true
+                    if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
+                        $status[1] = $true
+                    }
+                } elseif (($MoveX -ne 0 -and $MoveY -eq 0) -or `
+                        ($MoveX -eq 0 -and $MoveY -ne 0)) {
+                    if ($MoveX -gt 0) {
+                        for ($i = 1; $i -lt $MoveX; $i++) {
+                            if ($board[($CurrentColumn + $i), $CurrentRow] -ne $Empty) {
+                                    return $status
+                            }
+                        }
+                    } elseif ($MoveX -lt 0) {
+                        for ($i = 1; $i -lt [math]::abs($MoveX); $i++) {
+                            if ($board[($CurrentColumn - $i), $CurrentRow] -ne $Empty) {
+                                    return $status
+                            }
+                        }
+                    } elseif ($MoveY -gt 0) {
+                        for ($i = 1; $i -lt $MoveY; $i++) {
+                            if ($board[$CurrentColumn, ($CurrentRow + $i)] -ne $Empty) {
+                                    return $status
+                            }
+                        }
+                    } else {
+                        for ($i = 1; $i -lt [math]::abs($MoveY); $i++) {
+                            if ($board[$CurrentColumn, ($CurrentRow - $i)] -ne $Empty) {
+                                    return $status
+                            }
+                        }
+                    }
+                    $status[0] = $true
+                    if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
+                        $status[1] = $true
+                    }
+                } else {
+                    return $status
+                }
+            }
+
+            'King' {
+                $MoveX = [math]::abs($MoveX)
+                $MoveY = [math]::abs($MoveY)
+
+                if (($MoveX -le 1) -and ($MoveY -le 1)) {
+                    $status[0] = $true
+                    if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
+                        $status[1] = $true
+                    }
+                } elseif (($pc.firstmove -eq $true) -and `
+                        ($pc.color -eq 'White')) {
+                    if (($dst -eq 'G1') -and `
+                        ($wHR.firstmove -eq $true)) {
+                        
+                        $Crk = $board[7, 0]
+                        $board[7, 0] = $Empty
+                        $Crk.CurrentPosition = 'F1'
+                        $Crk.CurrentRow = 0
+                        $Crk.CurrentColumn = 5
+                        $Crk.firstmove = $false
+
+                        $status[0] = $true
+                        $pc.firstmove = $false
+                    } elseif (($dst -eq 'C1') -and `
+                            ($wAR.firstmove -eq $true)) {
+                        
+                        $Crk = $board[0, 0]
+                        $board[0, 0] = $Empty
+                        $Crk.CurrentPosition = 'D1'
+                        $Crk.CurrentRow = 0
+                        $Crk.CurrentColumn = 3
+                        $Crk.firstmove = $false
+
+                        $status[0] = $true
+                        $pc.firstmove = $false
+                    }
+                } elseif (($pc.firstmove -eq $true) -and `
+                        ($pc.color -eq 'Black')) {
+                    if (($dst -eq 'G8') -and `
+                        ($bHR.firstmove -eq $true)) {
+                        
+                        $Crk = $board[7, 7]
+                        $board[7, 7] = $Empty
+                        $Crk.CurrentPosition = 'F8'
+                        $Crk.CurrentRow = 7
+                        $Crk.CurrentColumn = 5
+                        $Crk.firstmove = $false
+
+                        $status[0] = $true
+                        $pc.firstmove = $false
+                    } elseif (($dst -eq 'C8') -and `
+                            ($bAR.firstmove -eq $true)) {
+                        
+                        $Crk = $board[0, 7]
+                        $board[0, 7] = $Empty
+                        $Crk.CurrentPosition = 'D8'
+                        $Crk.CurrentRow = 7
+                        $Crk.CurrentColumn = 3
+                        $Crk.firstmove = $false
+
+                        $status[0] = $true
                         $pc.firstmove = $false
                     }
                 } else {
-                    return $Status
+                    return $status
                 }
             }
         }
 
-        'Knight' {
-            $MoveX = [math]::abs($MoveX)
-            $MoveY = [math]::abs($MoveY)
-
-            if ((($MoveX -eq 1) -and ($MoveY -eq 2)) -or (($MoveX -eq 2) -and ($MoveY -eq 1))) {
-                $Status[0] = $true
-                if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
-                    $Status[1] = $true
-                }
-            } else {
-                return $Status
-            }
-        }
-
-        'Bishop' {
-            if ([math]::abs($MoveX) -ne [math]::abs($MoveY)) {
-                return $Status
-            } else {
-                if ($MoveX -gt 0) {
-                    if ($MoveY -gt 0) {
-                        for ($i = 1; $i -lt $MoveX; $i++) {
-                            if ($board[($CurrentColumn + $i) , ($CurrentRow + $i)] -ne $Empty) {
-                                return $Status
-                            }
-                        }
-                    } else {
-                        for ($i = 1; $i -lt $MoveX; $i++) {
-                            if ($board[($CurrentColumn + $i) , ($CurrentRow - $i)] -ne $Empty) {
-                                return $Status
-                            }
-                        }
-                    }
-                } else {
-                    if ($MoveY -gt 0) {
-                        for ($i = 1; $i -lt $MoveY; $i++) {
-                            if ($board[($CurrentColumn - $i) , ($CurrentRow + $i)] -ne $Empty) {
-                                return $Status
-                            }
-                        }
-                    } else {
-                        for ($i = 1; $i -lt [math]::abs($MoveX); $i++) {
-                            if ($board[($CurrentColumn - $i) , ($CurrentRow - $i)] -ne $Empty) {
-                                return $Status
-                            }
-                        }
-                    }
-                }
-                $Status[0] = $true
-                if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
-                    $Status[1] = $true
-                }
-            }
-        }
-
-        'Rook' {
-            if (([math]::abs($MoveX) -gt 0) -and ([math]::abs($MoveY) -gt 0)) {
-                return $Status
-            } else {
-                if ($MoveX -gt 0) {
-                    for ($i = 1; $i -lt $MoveX; $i++) {
-                        if ($board[($CurrentColumn + $i), $CurrentRow] -ne $Empty) {
-                                return $Status
-                        }
-                    }
-                } elseif ($MoveX -lt 0) {
-                    for ($i = 1; $i -lt [math]::abs($MoveX); $i++) {
-                        if ($board[($CurrentColumn - $i), $CurrentRow] -ne $Empty) {
-                                return $Status
-                        }
-                    }
-                } elseif ($MoveY -gt 0) {
-                    for ($i = 1; $i -lt $MoveY; $i++) {
-                        if ($board[$CurrentColumn, ($CurrentRow + $i)] -ne $Empty) {
-                                return $Status
-                        }
-                    }
-                } else {
-                    for ($i = 1; $i -lt [math]::abs($MoveY); $i++) {
-                        if ($board[$CurrentColumn, ($CurrentRow - $i)] -ne $Empty) {
-                                return $Status
-                        }
-                    }
-                }
-                $Status[0] = $true
-                $pc.firstmove = $false
-                if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
-                    $Status[1] = $true
-                }
-            }
-        }
-
-        'Queen' {
-            if ([math]::abs($MoveX) -eq [math]::abs($MoveY)) {
-                if ($MoveX -gt 0) {
-                    if ($MoveY -gt 0) {
-                        for ($i = 1; $i -lt $MoveX; $i++) {
-                            if ($board[($CurrentColumn + $i) , ($CurrentRow + $i)] -ne $Empty) {
-                                return $Status
-                            }
-                        }
-                    } else {
-                        for ($i = 1; $i -lt $MoveX; $i++) {
-                            if ($board[($CurrentColumn + $i) , ($CurrentRow - $i)] -ne $Empty) {
-                                return $Status
-                            }
-                        }
-                    }
-                } else {
-                    if ($MoveY -gt 0) {
-                        for ($i = 1; $i -lt $MoveY; $i++) {
-                            if ($board[($CurrentColumn - $i), ($CurrentRow + $i)] -ne $Empty) {
-                                return $Status
-                            }
-                        }
-                    } else {
-                        for ($i = 1; $i -lt [math]::abs($MoveX); $i++) {
-                            if ($board[($CurrentColumn - $i) , ($CurrentRow - $i)] -ne $Empty) {
-                                return $Status
-                            }
-                        }
-                    }
-                }
-                $Status[0] = $true
-                if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
-                    $Status[1] = $true
-                }
-            } elseif (($MoveX -ne 0 -and $MoveY -eq 0) -or `
-                      ($MoveX -eq 0 -and $MoveY -ne 0)) {
-                if ($MoveX -gt 0) {
-                    for ($i = 1; $i -lt $MoveX; $i++) {
-                        if ($board[($CurrentColumn + $i), $CurrentRow] -ne $Empty) {
-                                return $Status
-                        }
-                    }
-                } elseif ($MoveX -lt 0) {
-                    for ($i = 1; $i -lt [math]::abs($MoveX); $i++) {
-                        if ($board[($CurrentColumn - $i), $CurrentRow] -ne $Empty) {
-                                return $Status
-                        }
-                    }
-                } elseif ($MoveY -gt 0) {
-                    for ($i = 1; $i -lt $MoveY; $i++) {
-                        if ($board[$CurrentColumn, ($CurrentRow + $i)] -ne $Empty) {
-                                return $Status
-                        }
-                    }
-                } else {
-                    for ($i = 1; $i -lt [math]::abs($MoveY); $i++) {
-                        if ($board[$CurrentColumn, ($CurrentRow - $i)] -ne $Empty) {
-                                return $Status
-                        }
-                    }
-                }
-                $Status[0] = $true
-                if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
-                    $Status[1] = $true
-                }
-            } else {
-                return $Status
-            }
-        }
-
-        'King' {
-            $MoveX = [math]::abs($MoveX)
-            $MoveY = [math]::abs($MoveY)
-
-            if (($MoveX -le 1) -and ($MoveY -le 1)) {
-                $Status[0] = $true
-                if ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
-                    $Status[1] = $true
-                }
-            } elseif (($pc.firstmove -eq $true) -and `
-                      ($pc.color -eq 'White')) {
-                if (($dst -eq 'G1') -and `
-                    ($wHR.firstmove -eq $true)) {
-                    
-                    $Crk = $board[7, 0]
-                    $board[7, 0] = $Empty
-                    $Crk.CurrentPosition = 'F1'
-                    $Crk.CurrentRow = 0
-                    $Crk.CurrentColumn = 5
-                    $Crk.firstmove = $false
-
-                    $Status[0] = $true
-                    $pc.firstmove = $false
-                } elseif (($dst -eq 'C1') -and `
-                          ($wAR.firstmove -eq $true)) {
-                    
-                    $Crk = $board[0, 0]
-                    $board[0, 0] = $Empty
-                    $Crk.CurrentPosition = 'D1'
-                    $Crk.CurrentRow = 0
-                    $Crk.CurrentColumn = 3
-                    $Crk.firstmove = $false
-
-                    $Status[0] = $true
-                    $pc.firstmove = $false
-                }
-            } elseif (($pc.firstmove -eq $true) -and `
-                      ($pc.color -eq 'Black')) {
-                if (($dst -eq 'G8') -and `
-                    ($bHR.firstmove -eq $true)) {
-                    
-                    $Crk = $board[7, 7]
-                    $board[7, 7] = $Empty
-                    $Crk.CurrentPosition = 'F8'
-                    $Crk.CurrentRow = 7
-                    $Crk.CurrentColumn = 5
-                    $Crk.firstmove = $false
-
-                    $Status[0] = $true
-                    $pc.firstmove = $false
-                } elseif (($dst -eq 'C8') -and `
-                          ($bAR.firstmove -eq $true)) {
-                    
-                    $Crk = $board[0, 7]
-                    $board[0, 7] = $Empty
-                    $Crk.CurrentPosition = 'D8'
-                    $Crk.CurrentRow = 7
-                    $Crk.CurrentColumn = 3
-                    $Crk.firstmove = $false
-
-                    $Status[0] = $true
-                    $pc.firstmove = $false
-                }
-            } else {
-                return $Status
-            }
-        }
+        return $status
     }
-
-    return $Status
 }
 
 #Figure out if the game is over or still ongoing
