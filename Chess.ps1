@@ -160,11 +160,10 @@ Function New-Move {
     } elseif (($CurrentRow -eq $DesiredRow) -and ($CurrentColumn -eq $DesiredColumn)) {
         Write-Error "That wouldn't move anywhere."
         Read-Input
-    } elseif ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
-        if ($pc.Color -eq $board[$DesiredColumn, $DesiredRow].Color) {
-            Write-Error "Collision with own team"
-            Read-Input
-        }
+    } elseif ($board[$DesiredColumn, $DesiredRow] -ne $Empty -and `
+              $pc.Color -eq $board[$DesiredColumn, $DesiredRow].Color) {
+        Write-Error "Collision with own team"
+        Read-Input
     } else {
         [int]$MoveX = $DesiredColumn - $CurrentColumn
         [int]$MoveY = $DesiredRow - $CurrentRow
