@@ -1182,7 +1182,6 @@ while ($Script:gameStatus -eq [gamestatus]::ongoing) {
     Update-Board
     Publish-Board
     Read-Input
-    Update-Board
     Test-Gamestatus
 
     if ($Script:gameStatus -eq [gamestatus]::blackWin) {
@@ -1191,11 +1190,3 @@ while ($Script:gameStatus -eq [gamestatus]::ongoing) {
         Write-Output "White Wins!"
     }
 }
-
-<#Pseudocode
-    Update-Board
-    Publish-Board
-    New-Move
-    Test-Gamestatus
-    Update-Log
-Pseudocode#>
