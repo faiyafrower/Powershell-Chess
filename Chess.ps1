@@ -565,8 +565,6 @@ Function New-Move {
         }
     }
 }
-        <#
-        #>
 
 #Log logic will go here
 Function Update-Log {
@@ -1185,6 +1183,7 @@ while ($Script:gameStatus -eq [gamestatus]::ongoing) {
     Update-Board
     Publish-Board
     Read-Input
+    Update-Board
     Test-Gamestatus
 
     if ($Script:gameStatus -eq [gamestatus]::blackWin) {
