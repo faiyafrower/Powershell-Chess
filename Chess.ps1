@@ -629,6 +629,11 @@ Function Update-Log {
         $logentry += '+'
     }
 
+    Test-Gamestatus
+    if ($Script:gameStatus -ne 0) {
+        $logentry += '#'
+    }
+
     $Script:log += $logentry
    
     #Equivalent of touch command to ensure a log exists
@@ -636,7 +641,7 @@ Function Update-Log {
 
     #Clear and rewrite the log each time
     Clear-Content $Script:logpath
-    $line = " White`t`tBlack`r`n --------------------"
+    $line = "White`t`tBlack`r`n--------------------"
 
     #Header
     Add-Content -Encoding Unicode $Script:logpath $line
@@ -645,7 +650,9 @@ Function Update-Log {
         Add-Content -Encoding Unicode $Script:logpath $log[0]
     } else {
         for ($i = 0; $i -lt $log.Length - 1; $i += 2) {
-            $line = $Script:log[$i] + "`t" + "`t" + "`t" + $Script:log[$i + 1]
+            $line = $Script:log[$i]
+            $line += " `t`t"
+            $line += $Script:log[$i + 1]
             Add-Content -Encoding Unicode $Script:logpath $line
         }
         
@@ -1223,7 +1230,6 @@ while ($Script:gameStatus -eq [gamestatus]::ongoing) {
     Update-Board
     Publish-Board
     Read-Input
-    Test-Gamestatus
 
     if ($Script:gameStatus -eq [gamestatus]::blackWin) {
         Write-Output "Black Wins!"
