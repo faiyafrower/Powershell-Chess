@@ -136,6 +136,7 @@ Function New-Move {
     [bool]$moveSuccess = $false
     [int]$castle = [castleOptions]::none
     [bool]$promote = $false
+    [bool]$ep = $false
     [bool]$check = $false
 
     try {
@@ -188,7 +189,7 @@ Function New-Move {
                                 if ($board[$DesiredColumn, ($DesiredRow + 1)] -eq $Empty) {
                                     $moveSuccess = $true
                                     $pc.firstmove = $false
-                                    $pc.inpassing = $turncounter
+                                    $pc.inpassing = $Script:turnCounter
                                 } else {
                                     Write-Error "Illegal Pawn Move: Blocked Path"
                                 }
@@ -200,17 +201,20 @@ Function New-Move {
                         }
                     } elseif (($MoveX -eq 1) -and ($MoveY -eq 1)) {
                         if ($board[$DesiredColumn, $DesiredRow] -eq $Empty) {
-                            $enpassant = $board[$CurrentColumn, $DesiredRow]
+                            $enpassant = $board[$DesiredColumn, $CurrentRow]
                             if (($enpassant.GetType().Name -eq 'Pawn') -and `
                                 ($pc.Color -ne $enpassant.Color) -and `
-                                ($enpassant.inpassing -eq ($turncounter - 1))) {
+                                ($enpassant.inpassing -eq ($Script:turnCounter - 1))) {
                                 
                                 $moveSuccess = $true
-                                $board[$CurrentColumn, $DesiredRow] = $Empty
+                                $attack = $true
+                                $ep = $true
+                                
                                 $enpassant.Alive = $false
                                 $enpassant.CurrentPosition = $null
                                 $enpassant.CurrentRow = $null
                                 $enpassant.CurrentColumn = $null
+                                $board[$DesiredColumn, $CurrentRow] = $Empty
                             } else {
                                 Write-Error 'Illegal Pawn Move: Cannot Capture en passant'
                             }
@@ -494,7 +498,7 @@ Function New-Move {
         }
 
         if ($moveSuccess -eq $true) {
-            if ($attack -eq $true) {
+            if ($attack -eq $true -and $ep -eq $false) {
                 $board[$DesiredColumn, $DesiredRow].Alive = $false
                 $board[$DesiredColumn, $DesiredRow].CurrentPosition = $null
                 $board[$DesiredColumn, $DesiredRow].CurrentRow = $null
@@ -558,7 +562,7 @@ Function New-Move {
             $pc.CurrentColumn = $DesiredColumn
 
             #Empty promoteTo flag unless previously set
-            Update-Log $src $dst $pc.Symbol $attack $castle $promote
+            Update-Log $src $dst $pc.Symbol $attack $castle $promote $ep
             $Script:turnCounter += 1
             $Script:whiteTurn = !($Script:whiteTurn)
         } else {
@@ -569,7 +573,8 @@ Function New-Move {
 
 #Log logic will go here
 Function Update-Log {
-    param([string]$src, [string]$dst, [string]$piece, [bool]$attack, [int]$castle, [bool]$promote)
+    param([string]$src, [string]$dst, [string]$piece, [bool]$attack, 
+          [int]$castle, [bool]$promote, [bool]$ep)
 
     [string]$logentry = ''
 
@@ -594,6 +599,10 @@ Function Update-Log {
             $logentry += 'x'
         }
         $logentry += $dst
+    }
+
+    if ($ep -eq $true) {
+        $logentry += ' ep'
     }
 
     $Script:log += $logentry
@@ -684,7 +693,7 @@ Function Test-Move {
 
                             $status[0] = $true
                             $pc.firstmove = $false
-                            $pc.inpassing = $turncounter
+                            $pc.inpassing = $Script:turnCounter
                         } else {
                             return $status
                         }
@@ -693,7 +702,7 @@ Function Test-Move {
                             $enpassant = $board[$CurrentColumn, $DesiredRow]
                             if (($enpassant.GetType().Name -eq 'Pawn') -and `
                                 ($pc.Color -ne $enpassant.Color) -and `
-                                ($enpassant.inpassing -eq ($turncounter - 1))) {
+                                ($enpassant.inpassing -eq ($Script:turnCounter - 1))) {
                                 
                                 $status[0] = $true
                                 $board[$CurrentColumn, $DesiredRow] = $Empty
