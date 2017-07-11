@@ -3,7 +3,7 @@ Play a game of chess locally in PowerShell. Board layout from https://github.com
 
 Requires at least PowerShell v5.0, which should be default in Windows 10, but must be installed for earlier Windows operating systems.
 The PowerShell console cannot render unicode characters, which are used here to display chess pieces, so this should be run in the
-PowerShell ISE unless you want a challenge.
+PowerShell ISE
 
 0.1.0 - Chojiku      - 03-12-2016 - Initial Script
 
@@ -17,5 +17,4 @@ PowerShell ISE unless you want a challenge.
 
 0.2.0 - Michael Shen - 07-03-2017 - SAN notation logs
 
-
-Check, checkmate conditions and SAN notation to be implemented
+0.3.0 - Michael Shen - 07-11-2017 - Code refactor, more accurate SAN logs

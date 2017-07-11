@@ -43,6 +43,7 @@ they only appear when run in PowerShell ISE.
     0.1.3 - Michael Shen - 07-07-2016 - en passant
     0.1.4 - Michael Shen - 07-08-2016 - Pawn promotion
     0.2.0 - Michael Shen - 07-03-2017 - Overhaul into functional state
+    0.3.0 - Michael Shen - 07-11-2017 - Code refactor, more accurate SAN logs
 #>
 
 #Update-Board must be run before Publish-Board
