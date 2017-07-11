@@ -1188,6 +1188,7 @@ enum gamestatus {
     ongoing = 0
     whiteWin = 1
     blackWin = 2
+    quit = 3
 }
 
 #Set global variables to keep track of turn and game status
@@ -1204,5 +1205,7 @@ while ($Script:gameStatus -eq [gamestatus]::ongoing) {
         Write-Output "Black Wins!"
     } elseif ($Script:gameStatus -eq [gamestatus]::whiteWin) {
         Write-Output "White Wins!"
+    } elseif ($Script:gameStatus =eq [gamestatus]::quit) {
+        Write-Output "Game ended by request."
     }
 }
