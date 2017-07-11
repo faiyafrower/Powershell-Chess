@@ -505,7 +505,7 @@ Function New-Move {
                 $board[$DesiredColumn, $DesiredRow].CurrentColumn = $null
             }
 
-            #Pawn Promotion
+            #Pawn Promotion logic
             if (($pc.GetType().Name -eq 'Pawn') -and ($DesiredRow -eq 0)) {
                 [ValidateSet('Knight', 'Bishop', 'Rook', 'Queen')]$ptype = Read-Host 'Promote black pawn to'
                 
@@ -561,8 +561,28 @@ Function New-Move {
             $pc.CurrentRow = $DesiredRow
             $pc.CurrentColumn = $DesiredColumn
 
-            #Empty promoteTo flag unless previously set
-            Update-Log $src $dst $pc.Symbol $attack $castle $promote $ep
+            Update-Board
+
+            #Check logic
+            [Array]$curWhite = $Script:WhitePieces | Where-Object {$_.Alive -eq $true}
+            [Array]$curBlack = $Script:BlackPieces | Where-Object {$_.Alive -eq $true}
+
+            if ($Script:whiteTurn -eq $true) {
+                foreach ($whitePiece in $curWhite) {
+                    if ($(Test-Move $whitePiece.CurrentPosition $Script:bK.CurrentPosition)[0] -eq $true) {
+                        $check = $true
+                    }
+                }
+            } else {
+                foreach ($blackPiece in $curBlack) {
+                    if ($(Test-Move $blackPiece.CurrentPosition $Script:wK.CurrentPosition)[0] -eq $true) {
+                        $check = $true
+                    }
+                }
+            }
+
+            #Update the log, advance turn
+            Update-Log $src $dst $pc.Symbol $attack $castle $promote $ep $check
             $Script:turnCounter += 1
             $Script:whiteTurn = !($Script:whiteTurn)
         } else {
@@ -574,7 +594,7 @@ Function New-Move {
 #Log logic will go here
 Function Update-Log {
     param([string]$src, [string]$dst, [string]$piece, [bool]$attack, 
-          [int]$castle, [bool]$promote, [bool]$ep)
+          [int]$castle, [bool]$promote, [bool]$ep, [bool]$check)
 
     [string]$logentry = ''
 
@@ -603,6 +623,10 @@ Function Update-Log {
 
     if ($ep -eq $true) {
         $logentry += ' ep'
+    }
+
+    if ($check -eq $true) {
+        $logentry += '+'
     }
 
     $Script:log += $logentry
@@ -659,11 +683,10 @@ Function Test-Move {
     } elseif (($CurrentRow -eq $DesiredRow) -and ($CurrentColumn -eq $DesiredColumn)) {
         Write-Error "That wouldn't move anywhere."
         return $status
-    } elseif ($board[$DesiredColumn, $DesiredRow] -ne $Empty) {
-        if ($pc.Color -eq $board[$DesiredColumn, $DesiredRow].Color) {
-            Write-Error "Collision with own team"
-            return $status
-        }
+    } elseif ($board[$DesiredColumn, $DesiredRow] -ne $Empty -and `
+              $pc.Color -eq $board[$DesiredColumn, $DesiredRow].Color) {
+        Write-Error "Collision with own team"
+        return $status
     } else {
         [int]$MoveX = $DesiredColumn - $CurrentColumn
         [int]$MoveY = $DesiredRow - $CurrentRow
@@ -699,17 +722,18 @@ Function Test-Move {
                         }
                     } elseif (($MoveX -eq 1) -and ($MoveY -eq 1)) {
                         if ($board[$DesiredColumn,$DesiredRow] -eq $Empty) {
-                            $enpassant = $board[$CurrentColumn, $DesiredRow]
+                            $enpassant = $board[$DesiredColumn, $CurrentRow]
                             if (($enpassant.GetType().Name -eq 'Pawn') -and `
                                 ($pc.Color -ne $enpassant.Color) -and `
                                 ($enpassant.inpassing -eq ($Script:turnCounter - 1))) {
                                 
                                 $status[0] = $true
-                                $board[$CurrentColumn, $DesiredRow] = $Empty
+                                
                                 $enpassant.Alive = $false
                                 $enpassant.CurrentPosition = $null
                                 $enpassant.CurrentRow = $null
                                 $enpassant.CurrentColumn = $null
+                                $board[$DesiredColumn, $CurrentRow] = $Empty
                             } else {
                                 return $status
                             }
@@ -1205,7 +1229,7 @@ while ($Script:gameStatus -eq [gamestatus]::ongoing) {
         Write-Output "Black Wins!"
     } elseif ($Script:gameStatus -eq [gamestatus]::whiteWin) {
         Write-Output "White Wins!"
-    } elseif ($Script:gameStatus =eq [gamestatus]::quit) {
+    } elseif ($Script:gameStatus -eq [gamestatus]::quit) {
         Write-Output "Game ended by request."
     }
 }
