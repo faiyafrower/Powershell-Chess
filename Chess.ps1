@@ -557,23 +557,26 @@ Function New-Move {
 
             #Check logic
             #TODO: Shouldn't check when king is captured Issue 25
-            [Array]$curWhite = $Script:WhitePieces | Where-Object {$_.Alive -eq $true}
-            [Array]$curBlack = $Script:BlackPieces | Where-Object {$_.Alive -eq $true}
-
-            if ($Script:whiteTurn -eq $true) {
-                foreach ($whitePiece in $curWhite) {
-                    if ($(Test-Move $whitePiece.CurrentPosition $Script:bK.CurrentPosition)[0] -eq $true) {
-                        $check = $true
+            Test-Gamestatus
+            if ($Script:gameStatus -eq [gamestatus]::ongoing) {
+                [Array]$curWhite = $Script:WhitePieces | Where-Object {$_.Alive -eq $true}
+                [Array]$curBlack = $Script:BlackPieces | Where-Object {$_.Alive -eq $true}
+    
+                if ($Script:whiteTurn -eq $true) {
+                    foreach ($whitePiece in $curWhite) {
+                        if ($(Test-Move $whitePiece.CurrentPosition $Script:bK.CurrentPosition)[0] -eq $true) {
+                            $check = $true
+                        }
                     }
-                }
-            } else {
-                foreach ($blackPiece in $curBlack) {
-                    if ($(Test-Move $blackPiece.CurrentPosition $Script:wK.CurrentPosition)[0] -eq $true) {
-                        $check = $true
+                } else {
+                    foreach ($blackPiece in $curBlack) {
+                        if ($(Test-Move $blackPiece.CurrentPosition $Script:wK.CurrentPosition)[0] -eq $true) {
+                            $check = $true
+                        }
                     }
                 }
             }
-
+            
             #Update the log, advance turn
             Update-Log $src $dst $pc.Symbol $attack $castle $promote $ep $check
             $Script:turnCounter += 1
@@ -622,7 +625,6 @@ Function Update-Log {
         $logentry += '+'
     }
 
-    Test-Gamestatus
     if ($Script:gameStatus -ne 0) {
         $logentry += '#'
     }
