@@ -32,18 +32,9 @@ they only appear when run in PowerShell ISE.
 
 .NOTES
     Name: Chess.ps1
-    Version: 0.2.0
+    Version: 0.3.0
     Author: Michael Shen
-    Date: 07-03-2017
-
-.CHANGELOG
-    0.1.0 - Chojiku      - 03-12-2016 - Initial Script
-    0.1.1 - Michael Shen - 07-06-2016 - Overhaul into playable state
-    0.1.2 - Michael Shen - 07-07-2016 - Castling
-    0.1.3 - Michael Shen - 07-07-2016 - en passant
-    0.1.4 - Michael Shen - 07-08-2016 - Pawn promotion
-    0.2.0 - Michael Shen - 07-03-2017 - Overhaul into functional state
-    0.3.0 - Michael Shen - 07-11-2017 - Code refactor, more accurate SAN logs
+    Date: 07-11-2017
 #>
 
 #Update-Board must be run before Publish-Board
@@ -98,7 +89,7 @@ Function Read-Input {
     New-Move $src $dst
 }
 
-#Update the status of all the pieces
+#Update the status of all the pieces and place them
 Function Update-Board {
     #Get arrays of all piece that are still alive
     [Array]$CurrentWhite = $Script:WhitePieces | Where-Object {$_.Alive -eq $true}
@@ -565,6 +556,7 @@ Function New-Move {
             Update-Board
 
             #Check logic
+            #TODO: Shouldn't check when king is captured Issue 25
             [Array]$curWhite = $Script:WhitePieces | Where-Object {$_.Alive -eq $true}
             [Array]$curBlack = $Script:BlackPieces | Where-Object {$_.Alive -eq $true}
 
