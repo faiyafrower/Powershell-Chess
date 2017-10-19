@@ -11,4 +11,4 @@ PowerShell ISE
 
 0.2.0 - Michael Shen - 07-03-2017 - SAN notation logs
 
-0.3.1 - Michael Shen - 10-19-2017 - Code refactor, more accurate SAN logs, resign, bug fixes
+0.3.2 - Michael Shen - 10-19-2017 - Code refactor, more accurate SAN logs, resign, bug fixes
