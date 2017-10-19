@@ -7,14 +7,8 @@ PowerShell ISE
 
 0.1.0 - Chojiku      - 03-12-2016 - Initial Script
 
-0.1.1 - Michael Shen - 07-06-2016 - Overhaul into playable state
-
-0.1.2 - Michael Shen - 07-07-2016 - Castling
-
-0.1.3 - Michael Shen - 07-07-2016 - en passant
-
-0.1.4 - Michael Shen - 07-08-2016 - Pawn promotion
+0.1.4 - Michael Shen - 07-08-2016 - Overhaul, Castling, Pawn promotion, en passant
 
 0.2.0 - Michael Shen - 07-03-2017 - SAN notation logs
 
-0.3.0 - Michael Shen - 07-11-2017 - Code refactor, more accurate SAN logs
+0.3.1 - Michael Shen - 10-19-2017 - Code refactor, more accurate SAN logs, resign, bug fixes

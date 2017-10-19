@@ -3,7 +3,7 @@
 #####################################################################################
 #                                                      _:_
 #     =========================                       '-.-'
-#    | PowerShell Chess v0.3.0 |             ()      __.'.__
+#    | PowerShell Chess v0.3.1 |             ()      __.'.__
 #     =========================           .-:--:-.  |_______|
 #                                  ()      \____/    \=====/
 #                                  /\      {====}     )___(
@@ -22,7 +22,7 @@
 
 <#
 .SYNOPSIS
-    Multiplayer chess game in PowerShell. No AI.
+    Local multiplayer chess game in PowerShell.
 
 .DESCRIPTION
     Started off of code from https://github.com/bhassen99/POSH-Chess, which was very
@@ -32,18 +32,9 @@ they only appear when run in PowerShell ISE.
 
 .NOTES
     Name: Chess.ps1
-    Version: 0.2.0
+    Version: 0.3.1
     Author: Michael Shen
-    Date: 07-03-2017
-
-.CHANGELOG
-    0.1.0 - Chojiku      - 03-12-2016 - Initial Script
-    0.1.1 - Michael Shen - 07-06-2016 - Overhaul into playable state
-    0.1.2 - Michael Shen - 07-07-2016 - Castling
-    0.1.3 - Michael Shen - 07-07-2016 - en passant
-    0.1.4 - Michael Shen - 07-08-2016 - Pawn promotion
-    0.2.0 - Michael Shen - 07-03-2017 - Overhaul into functional state
-    0.3.0 - Michael Shen - 07-11-2017 - Code refactor, more accurate SAN logs
+    Date: 10-19-2017
 #>
 
 #Update-Board must be run before Publish-Board
@@ -74,31 +65,42 @@ Function Publish-Board {
 Function Read-Input {
     if($Script:whiteTurn) {
         try {
-            [ValidateScript({$_.Length -eq 2})]$src = Read-Host 'White piece source'
-            [Int]$cc = Get-Column $src[0]
-            [Int]$cr = Get-Row $src[1]
-            [ValidateScript({$_.Color -eq 'White'})]$pc = $board[$cc, $cr]
-            [ValidateScript({$_.Length -eq 2})]$dst = Read-Host 'White piece destination'
+            [ValidateScript({$_.Length -eq 2 -or $_ -like '*resign*'})]$src = Read-Host 'White piece source'
+            if ($src -eq 'resign') {
+                $Script:gameStatus = [gamestatus]::blackWin
+                Update-Log -resign $true
+            } else {
+                [Int]$cc = Get-Column $src[0]
+                [Int]$cr = Get-Row $src[1]
+                [ValidateScript({$_.Color -eq 'White'})]$pc = $board[$cc, $cr]
+                [ValidateScript({$_.Length -eq 2})]$dst = Read-Host 'White piece destination'
+                New-Move $src $dst
+            }
         } catch {
             Write-Error "Illegal input: Not a white piece or valid location"
+            Write-Error $src
             Read-Input
         }
     } else {
         try {
-            [ValidateScript({$_.Length -eq 2})]$src = Read-Host 'Black piece source'
+            [ValidateScript({$_.Length -eq 2 -or $_.Value -eq 'resign'})]$src = Read-Host 'Black piece source'
+            if ($src -like '*resign*') {
+                $Script:gameStatus = [gamestatus]::whiteWin
+                Update-Log -resign $true
+            }
             [Int]$cc = Get-Column $src[0]
             [Int]$cr = Get-Row $src[1]
             [ValidateScript({$_.Color -eq 'Black'})]$pc = $board[$cc, $cr]
             [ValidateScript({$_.Length -eq 2})]$dst = Read-Host 'Black piece destination'
+            New-Move $src $dst
         } catch {
             Write-Error "Illegal input: Not a black piece or valid location"
             Read-Input
         }
     }
-    New-Move $src $dst
 }
 
-#Update the status of all the pieces
+#Update the status of all the pieces and place them
 Function Update-Board {
     #Get arrays of all piece that are still alive
     [Array]$CurrentWhite = $Script:WhitePieces | Where-Object {$_.Alive -eq $true}
@@ -565,23 +567,27 @@ Function New-Move {
             Update-Board
 
             #Check logic
-            [Array]$curWhite = $Script:WhitePieces | Where-Object {$_.Alive -eq $true}
-            [Array]$curBlack = $Script:BlackPieces | Where-Object {$_.Alive -eq $true}
-
-            if ($Script:whiteTurn -eq $true) {
-                foreach ($whitePiece in $curWhite) {
-                    if ($(Test-Move $whitePiece.CurrentPosition $Script:bK.CurrentPosition)[0] -eq $true) {
-                        $check = $true
+            #TODO: Shouldn't check when king is captured Issue 25
+            Test-Gamestatus
+            if ($Script:gameStatus -eq [gamestatus]::ongoing) {
+                [Array]$curWhite = $Script:WhitePieces | Where-Object {$_.Alive -eq $true}
+                [Array]$curBlack = $Script:BlackPieces | Where-Object {$_.Alive -eq $true}
+    
+                if ($Script:whiteTurn -eq $true) {
+                    foreach ($whitePiece in $curWhite) {
+                        if ($(Test-Move $whitePiece.CurrentPosition $Script:bK.CurrentPosition)[0] -eq $true) {
+                            $check = $true
+                        }
                     }
-                }
-            } else {
-                foreach ($blackPiece in $curBlack) {
-                    if ($(Test-Move $blackPiece.CurrentPosition $Script:wK.CurrentPosition)[0] -eq $true) {
-                        $check = $true
+                } else {
+                    foreach ($blackPiece in $curBlack) {
+                        if ($(Test-Move $blackPiece.CurrentPosition $Script:wK.CurrentPosition)[0] -eq $true) {
+                            $check = $true
+                        }
                     }
                 }
             }
-
+            
             #Update the log, advance turn
             Update-Log $src $dst $pc.Symbol $attack $castle $promote $ep $check
             $Script:turnCounter += 1
@@ -595,7 +601,7 @@ Function New-Move {
 #Log logic will go here
 Function Update-Log {
     param([string]$src, [string]$dst, [string]$piece, [bool]$attack, 
-          [int]$castle, [bool]$promote, [bool]$ep, [bool]$check)
+          [int]$castle, [bool]$promote, [bool]$ep, [bool]$check, [bool]$resign)
 
     [string]$logentry = ''
 
@@ -630,9 +636,12 @@ Function Update-Log {
         $logentry += '+'
     }
 
-    Test-Gamestatus
     if ($Script:gameStatus -ne 0) {
         $logentry += '#'
+    }
+
+    if ($resign -eq $true) {
+        $logentry = 'resigned'
     }
 
     $Script:log += $logentry
