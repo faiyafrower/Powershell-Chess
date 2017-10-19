@@ -3,7 +3,7 @@
 #####################################################################################
 #                                                      _:_
 #     =========================                       '-.-'
-#    | PowerShell Chess v0.3.0 |             ()      __.'.__
+#    | PowerShell Chess v0.3.1 |             ()      __.'.__
 #     =========================           .-:--:-.  |_______|
 #                                  ()      \____/    \=====/
 #                                  /\      {====}     )___(
@@ -32,9 +32,9 @@ they only appear when run in PowerShell ISE.
 
 .NOTES
     Name: Chess.ps1
-    Version: 0.3.0
+    Version: 0.3.1
     Author: Michael Shen
-    Date: 07-11-2017
+    Date: 10-19-2017
 #>
 
 #Update-Board must be run before Publish-Board
