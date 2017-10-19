@@ -22,7 +22,7 @@
 
 <#
 .SYNOPSIS
-    Multiplayer chess game in PowerShell. No AI.
+    Local multiplayer chess game in PowerShell.
 
 .DESCRIPTION
     Started off of code from https://github.com/bhassen99/POSH-Chess, which was very
@@ -65,28 +65,39 @@ Function Publish-Board {
 Function Read-Input {
     if($Script:whiteTurn) {
         try {
-            [ValidateScript({$_.Length -eq 2})]$src = Read-Host 'White piece source'
-            [Int]$cc = Get-Column $src[0]
-            [Int]$cr = Get-Row $src[1]
-            [ValidateScript({$_.Color -eq 'White'})]$pc = $board[$cc, $cr]
-            [ValidateScript({$_.Length -eq 2})]$dst = Read-Host 'White piece destination'
+            [ValidateScript({$_.Length -eq 2 -or $_ -like '*resign*'})]$src = Read-Host 'White piece source'
+            if ($src -eq 'resign') {
+                $Script:gameStatus = [gamestatus]::blackWin
+                Update-Log -resign $true
+            } else {
+                [Int]$cc = Get-Column $src[0]
+                [Int]$cr = Get-Row $src[1]
+                [ValidateScript({$_.Color -eq 'White'})]$pc = $board[$cc, $cr]
+                [ValidateScript({$_.Length -eq 2})]$dst = Read-Host 'White piece destination'
+                New-Move $src $dst
+            }
         } catch {
             Write-Error "Illegal input: Not a white piece or valid location"
+            Write-Error $src
             Read-Input
         }
     } else {
         try {
-            [ValidateScript({$_.Length -eq 2})]$src = Read-Host 'Black piece source'
+            [ValidateScript({$_.Length -eq 2 -or $_.Value -eq 'resign'})]$src = Read-Host 'Black piece source'
+            if ($src -like '*resign*') {
+                $Script:gameStatus = [gamestatus]::whiteWin
+                Update-Log -resign $true
+            }
             [Int]$cc = Get-Column $src[0]
             [Int]$cr = Get-Row $src[1]
             [ValidateScript({$_.Color -eq 'Black'})]$pc = $board[$cc, $cr]
             [ValidateScript({$_.Length -eq 2})]$dst = Read-Host 'Black piece destination'
+            New-Move $src $dst
         } catch {
             Write-Error "Illegal input: Not a black piece or valid location"
             Read-Input
         }
     }
-    New-Move $src $dst
 }
 
 #Update the status of all the pieces and place them
@@ -590,7 +601,7 @@ Function New-Move {
 #Log logic will go here
 Function Update-Log {
     param([string]$src, [string]$dst, [string]$piece, [bool]$attack, 
-          [int]$castle, [bool]$promote, [bool]$ep, [bool]$check)
+          [int]$castle, [bool]$promote, [bool]$ep, [bool]$check, [bool]$resign)
 
     [string]$logentry = ''
 
@@ -627,6 +638,10 @@ Function Update-Log {
 
     if ($Script:gameStatus -ne 0) {
         $logentry += '#'
+    }
+
+    if ($resign -eq $true) {
+        $logentry = 'resigned'
     }
 
     $Script:log += $logentry
