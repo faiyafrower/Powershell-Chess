@@ -83,16 +83,17 @@ Function Read-Input {
         }
     } else {
         try {
-            [ValidateScript({$_.Length -eq 2 -or $_.Value -eq 'resign'})]$src = Read-Host 'Black piece source'
-            if ($src -like '*resign*') {
+            [ValidateScript({$_.Length -eq 2 -or $_ -like '*resign*'})]$src = Read-Host 'Black piece source'
+            if ($src -eq 'resign') {
                 $Script:gameStatus = [gamestatus]::whiteWin
                 Update-Log -resign $true
+            } else {
+                [Int]$cc = Get-Column $src[0]
+                [Int]$cr = Get-Row $src[1]
+                [ValidateScript({$_.Color -eq 'Black'})]$pc = $board[$cc, $cr]
+                [ValidateScript({$_.Length -eq 2})]$dst = Read-Host 'Black piece destination'
+                New-Move $src $dst
             }
-            [Int]$cc = Get-Column $src[0]
-            [Int]$cr = Get-Row $src[1]
-            [ValidateScript({$_.Color -eq 'Black'})]$pc = $board[$cc, $cr]
-            [ValidateScript({$_.Length -eq 2})]$dst = Read-Host 'Black piece destination'
-            New-Move $src $dst
         } catch {
             Write-Error "Illegal input: Not a black piece or valid location"
             Read-Input
